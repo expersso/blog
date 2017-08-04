@@ -1,0 +1,223 @@
+# ---
+# title: Implementing a perfect-playing Nim opponent in R
+# author: EP
+# date: '2017-07-30'
+# categories:
+#   - R
+# tags:
+#   - functional programming
+#   - combinatorial game theory
+# ---
+
+## It's time for some (combinatorial) game theory
+
+In a previous post we wrote a program that allows you to play a game of Nim
+against another human opponent. Now, to be perfectly frank, Nim is not a very
+fun game to play, so I think many readers would be hard-pressed to find somebody
+to play against. Luckily, it turns out that it's very simple to modify our
+initial program to also allow for play against a computer-opponent. To
+understand how this is possible, however, we must first discuss a bit of
+algebra.
+
+As mentioned in the previous post, the game of Nim gives rise to a special type
+of numbers called, naturally, "nimbers" (mathematicians are clearly not immune
+to dad jokes). These numbers look similar to regular integers, but they are
+added together by performing a bitwise xor operation on their binary
+representations. So how does this work?
+
+Consider the numbers 4 and 7. In binary, these would be represented as 100 and
+111, respectively. The xor operator takes two bits (0s or 1s) as input and
+returns a 1 if exactly one of the two inputs are 1, and otherwise returns 0. For
+example:
+
+```{r}
+xor(0,0)
+xor(0,1)
+xor(1,0)
+xor(1,1)
+```
+
+To perform the bitwise xor operation on two numbers, therefore, means we
+take two numbers, convert them to binary, line them up, and perform the xor
+operation on each consequtive pair of bits. In the case of 4 and 7 we thus get:
+
+```{r bits}
+head(intToBits(4))
+head(intToBits(7))
+head(intToBits(bitwXor(4, 7)))
+```
+
+(R gives the binary representation from left to right, so e.g. 4 = 001 here.
+We're also wrapping everything in `head` to avoid printing out a ton of zeros).
+So the `bitwXor` first looks at 0 and 1 and evaluates to 1, then 1 and 0 gives 1
+again, and finally 1 and 1 gives 0. So `bitwXor(4,7)` = 110 (in binary) = 3 (in
+decimal).
+
+We said earlier that bitwise xor is how you add together two nimbers, so it
+would be convenient if we could use standard notation and just write $4 + 7 =
+3$. Luckily, R's beautifully minimalist S3 system is perfectly suited for this.
+
+We start by defining a constructor function, which simply tags a number as a
+nimber:
+
+```{r nimbers}
+nimber <- function(x) {
+  structure(x, class = c("nimber", class(x)))
+}
+
+nimber(5)
+```
+
+We then implement a pretty-printing method (the `unclass` call here is necessary
+to avoid infinite recursive calls to `print`.):
+
+```{r}
+print.nimber <- function(x) {
+  cat("Nimbers:\n")
+  print(unclass(x))
+}
+
+nimber(1:5)
+```
+
+With that out of the way, we can now overload the `+` operator so that nimber
+addition is defined as bitwise xor:
+
+```{r}
+`+.nimber` <- function(e1, e2) {
+  nimber(bitwXor(e1, e2))
+}
+
+nimber(4) + nimber(7)
+```
+
+We can also implement a `[` method, so that we can index into a vector of
+nimbers without those nimbers being converted into numbers:
+
+```{r}
+nimber(1:5)[3]
+
+`[.nimber` <- function(x, i) {
+  nimber(NextMethod())
+}
+
+nimber(1:5)[3]
+```
+
+Finally, we would like to be able to take sum of a vector of nimbers. We implement the `sum` method using `purrr::reduce`:
+
+```{r}
+library(purrr)
+
+sum.nimber <- function(x, na.rm = TRUE) {
+  reduce(x, `+`, .init = nimber(0))
+}
+
+sum(nimber(c(4, 7)))
+sum(nimber(1:5))
+```
+
+(The mathematically-inclined reader might wonder if this is a legitimate way to
+sum a set of nimbers. Indeed it is; bitwise xor is associative with 0 as the
+identity element. In fact, every nimber is its own inverse (e.g. 100101 bitwised
+xor'ed with itself will produce 000000 = 0, the identity element) and the order
+in which we perform the operation is irrelevant. Hence, the nimbers actually
+form an abelian group under nim-addition. To be even more precise, since every
+element except the identity is of order 2, they form a
+(https://proofwiki.org/wiki/Definition%3aBoolean_Group)[Boolean group])
+
+So what does all of this have to do with a computer playing Nim? Well, it turns
+out that if we treat the number of pebbles in a Nim heap as a nimber, then any
+game board can be represented by nim-summing up all the heaps. This sum will
+then either be zero or non-zero, and a player can always make a move that takes
+a non-zero-sum board and produces a zero-sum board. The key insight from the
+mathematical analysis of Nim is that the optimal move is always to produce a
+zero-sum board. (We omit all proofs and details here. See the
+(https://en.wikipedia.org/wiki/Nim#Mathematical_theory)[Wikipedia entry] for
+some quite accessible proofs and examples).
+
+So we can define an `optimal_move` function, which takes a board as input,
+calculates the nim-sum of the board, randomly selects a row among the rows that
+have a certain desired property, removes the number of pebbles necessary to
+produce a zero-sum board, and returns the optimal move:
+
+```{r optimal_move}
+resample <- function(x, ...) {
+  x[sample.int(length(x), ...)]
+}
+
+optimal_move <- function(board) {
+  board_sum <- sum(board)
+  row <- resample(which(board + board_sum < board), 1)
+  num <- board[row] - (board[row] + board_sum)
+  c("row" = row, "num" = num)
+}
+```
+
+(`resample` is just a more stable version of `sample`). Below, we make sure that
+the board is always of class `nimber`, so that the `sum` call gets dispatched to
+`sum.nimber`.
+
+While we're at it, we can also implement a random move function:
+
+```{r}
+random_move <- function(board) {
+  row <- resample(seq_along(board[board != 0]), 1)
+  num <- resample(range(1, board[row]), 1)
+  c("row" = row, "num" = num)
+}
+```
+
+```{r}
+computer_move <- function(board) {
+  board_sum <- sum(board)
+  when(board_sum,
+       . == 0 ~ random_move(board),
+       . != 0 ~ optimal_move(board))
+}
+```
+
+Thanks to the way we originally structured the game, refactoring the `nim`
+function to allow for a computer opponent is straightforward. We just have to
+add a `comp_opponent` argument, make sure that the board is always of class
+`nimber`, and generate a computer move if it's the computer's turn to move:
+
+```{r game_w_computer_moves}
+# These remain unchanged
+next_player <- function(player) if(player == 1) 2 else 1
+valid_move  <- function(board, row, num) num > 0 && board[row] >= num
+finished    <- function(board) all(board == 0)
+update      <- function(board, row, num) `[<-`(board, row, board[row] - num)
+disp_row    <- function(row, num) cat(row, ":", rep("*", num), "\n")
+disp_board  <- function(board) walk2(seq_along(board), board, disp_row)
+get_move    <- function() {
+  row <- as.integer(readline("Choose a row: "))
+  num <- as.integer(readline("Number of stars to remove: "))
+  c("row" = row, "num" = num)
+}
+
+nim <- function(board = 5:1, player = 1, comp_opponent = TRUE) {
+  if(!inherits(board, "nimber")) {
+    board <- nimber(board)
+  }
+
+  if(finished(board)) {
+    cat("Game over. Player", next_player(player), "wins!")
+    return(invisible())
+  }
+
+  disp_board(board)
+  cat("Player", player, "\n")
+  play <- if(player == 2 && comp_opponent)
+    computer_move(board)
+  else get_move()
+
+  row  <- play["row"]
+  num  <- play["num"]
+
+  if(!valid_move(board, row, num)) {
+    cat("Not a valid move. Try again.\n")
+    nim(board, player)
+  } else nim(update(board, row, num), next_player(player))
+}
+```

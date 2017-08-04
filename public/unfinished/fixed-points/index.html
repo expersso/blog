@@ -1,0 +1,96 @@
+<div id="section" class="section level1">
+<h1>—</h1>
+</div>
+<div id="title-fixed-points" class="section level1">
+<h1>title: Fixed points</h1>
+</div>
+<div id="author-ep" class="section level1">
+<h1>author: EP</h1>
+</div>
+<div id="date-2017-07-30" class="section level1">
+<h1>date: ‘2017-07-30’</h1>
+</div>
+<div id="categories" class="section level1">
+<h1>categories:</h1>
+</div>
+<div id="r" class="section level1">
+<h1>- R</h1>
+</div>
+<div id="tags" class="section level1">
+<h1>tags:</h1>
+</div>
+<div id="functional-programming" class="section level1">
+<h1>- functional programming</h1>
+</div>
+<div id="mathematics" class="section level1">
+<h1>- mathematics</h1>
+</div>
+<div id="section-1" class="section level1">
+<h1>—</h1>
+<pre class="r"><code>knitr::opts_chunk$set(warning = FALSE, message = FALSE)</code></pre>
+<pre class="r"><code>library(tidyverse)
+
+Fix &lt;- function(f) {
+  function(...) {
+    out &lt;- f(...)
+    equals &lt;- map2_lgl(out, f(out), compose(isTRUE, all.equal))
+    unique(out[equals])
+  }
+}
+
+f &lt;- function(x) x^3
+
+all(Fix(f)(-10:10) == f(Fix(f)(-10:10)))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>plot_fixed_point &lt;- function(f, xs) {
+  df &lt;- data_frame(x = xs,
+                   y = ifelse(x %in% Fix(f)(x), x, NA)) %&gt;% 
+    filter(!is.na(y))
+
+  ggplot(data.frame(x = xs), aes(x)) +
+    geom_hline(yintercept = 0, size = 0.1) +
+    geom_vline(xintercept = 0, size = 0.1) +
+    stat_function(fun = f, color = &quot;blue&quot;) +
+    stat_function(fun = function(x) x, color = &quot;red&quot;) +
+    geom_point(aes(y = y), data = df) +
+    geom_text(aes(y = y, label = sprintf(&quot;(%s,%s)&quot;, x, y)), 
+              data = df, size = 3, hjust = 0, vjust = 1) +
+    coord_equal(ylim = range(xs))
+}</code></pre>
+<pre class="r"><code>domain &lt;- -10:10
+plot_fixed_point(function(x) x^2, domain)</code></pre>
+<p><img src="../../unfinished/fixed-points_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code>plot_fixed_point(function(x) x^3, domain)</code></pre>
+<p><img src="../../unfinished/fixed-points_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>plot_fixed_point(sin, domain)</code></pre>
+<p><img src="../../unfinished/fixed-points_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>plot_fixed_point(cos, domain)</code></pre>
+<p><img src="../../unfinished/fixed-points_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p><a href="https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points">Attractive fixed point</a></p>
+<pre class="r"><code>afp &lt;- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
+afp</code></pre>
+<pre><code>## [1] 0.7442374</code></pre>
+<pre class="r"><code>plot_fixed_point(cos, domain) +
+  geom_point(aes(x = afp, y = afp))</code></pre>
+<p><img src="../../unfinished/fixed-points_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>iter_apply &lt;- function(f, n, .init, ...) {
+  reduce(seq_len(n), function(x, y) f(x, ...), .init = .init)
+}
+
+iter_apply(function(x) x + 2, 3, 0)</code></pre>
+<pre><code>## [1] 6</code></pre>
+<pre class="r"><code>iter_apply(cos, 10, -1)</code></pre>
+<pre><code>## [1] 0.7442374</code></pre>
+<pre class="r"><code>is_even      &lt;- function(x) x %% 2 == 0
+is_magic     &lt;- function(x) x == 13
+is_less_than &lt;- function(n) function(x) x &lt; n
+
+keep(1:20, ~is_even(.) &amp;&amp; !is_less_than(10)(.) || is_magic(.))</code></pre>
+<pre><code>## [1] 10 12 13 14 16 18 20</code></pre>
+<pre class="r"><code>fs &lt;- list(sin, function(x) x^2, cos)
+lift(compose)(fs)(1:5)</code></pre>
+<pre><code>## [1] 0.28779783 0.17231386 0.83054479 0.41436956 0.08037744</code></pre>
+<pre class="r"><code>`%.%` &lt;- function(f1, f2) function(...) f1(f2(...))
+(fs[[1]] %.% fs[[2]] %.% fs[[3]])(1:5)</code></pre>
+<pre><code>## [1] 0.28779783 0.17231386 0.83054479 0.41436956 0.08037744</code></pre>
+</div>

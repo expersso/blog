@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Unfinisheds on A blog about math and programming</title>
+    <link>/unfinished/</link>
+    <description>Recent content in Unfinisheds on A blog about math and programming</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    
+	<atom:link href="/unfinished/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title></title>
+      <link>/unfinished/fixed-points/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/unfinished/fixed-points/</guid>
+      <description>—title: Fixed pointsauthor: EPdate: ‘2017-07-30’categories:- Rtags:- functional programming- mathematics—knitr::opts_chunk$set(warning = FALSE, message = FALSE)library(tidyverse)Fix &amp;lt;- function(f) {function(...) {out &amp;lt;- f(...)equals &amp;lt;- map2_lgl(out, f(out), compose(isTRUE, all.equal))unique(out[equals])}}f &amp;lt;- function(x) x^3all(Fix(f)(-10:10) == f(Fix(f)(-10:10)))## [1] TRUEplot_fixed_point &amp;lt;- function(f, xs) {df &amp;lt;- data_frame(x = xs,y = ifelse(x %in% Fix(f)(x), x, NA)) %&amp;gt;% filter(!</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>/unfinished/functions_as_lists/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/unfinished/functions_as_lists/</guid>
+      <description>—title: Functions as listsauthor: EPdate: ‘2017-07-30’categories:- Rtags:- functional programming- mathematics—list2fun &amp;lt;- function(xs) { function(x) { keep(xs, ~.[[1]] == x)[[1]][[2]] } }
+xs &amp;lt;- transpose(list(1:100, (1:100)^2)) square &amp;lt;- list2fun(xs) square(24)
+fun2list &amp;lt;- function(f) { function(xs) { transpose(list(xs, map(xs, f))) } }
+double &amp;lt;- function(x) x*2
+fun2list(double)(1:10)
+</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>/unfinished/nim2/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/unfinished/nim2/</guid>
+      <description>—title: Implementing a perfect-playing Nim opponent in Rauthor: EPdate: ‘2017-07-30’categories:- Rtags:- functional programming- combinatorial game theory—It’s time for some (combinatorial) game theoryIn a previous post we wrote a program that allows you to play a game of Nim against another human opponent. Now, to be perfectly frank, Nim is not a very fun game to play, so I think many readers would be hard-pressed to find somebody to play against.</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>/unfinished/rock-paper-scissors/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/unfinished/rock-paper-scissors/</guid>
+      <description>—title: Rock, Paper, Scissors in Rauthor: EPdate: ‘2017-07-30’categories:- Rtags:- functional programming- algebra—library(tidyverse)## Loading tidyverse: ggplot2## Loading tidyverse: tibble## Loading tidyverse: tidyr## Loading tidyverse: readr## Loading tidyverse: purrr## Loading tidyverse: dplyr## Conflicts with tidy packages ----------------------------------------------## filter(): dplyr, stats## lag(): dplyr, statsrps &amp;lt;- function(x) {stopifnot(x %in% c(&amp;quot;r&amp;quot;, &amp;quot;p&amp;quot;, &amp;quot;s&amp;quot;))structure(x, class = c(&amp;quot;rps&amp;quot;, class(x)))}print.</description>
+    </item>
+    
+  </channel>
+</rss>

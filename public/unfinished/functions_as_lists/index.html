@@ -1,0 +1,35 @@
+<div id="section" class="section level1">
+<h1>—</h1>
+</div>
+<div id="title-functions-as-lists" class="section level1">
+<h1>title: Functions as lists</h1>
+</div>
+<div id="author-ep" class="section level1">
+<h1>author: EP</h1>
+</div>
+<div id="date-2017-07-30" class="section level1">
+<h1>date: ‘2017-07-30’</h1>
+</div>
+<div id="categories" class="section level1">
+<h1>categories:</h1>
+</div>
+<div id="r" class="section level1">
+<h1>- R</h1>
+</div>
+<div id="tags" class="section level1">
+<h1>tags:</h1>
+</div>
+<div id="functional-programming" class="section level1">
+<h1>- functional programming</h1>
+</div>
+<div id="mathematics" class="section level1">
+<h1>- mathematics</h1>
+</div>
+<div id="section-1" class="section level1">
+<h1>—</h1>
+<p>list2fun &lt;- function(xs) { function(x) { keep(xs, ~.[[1]] == x)[[1]][[2]] } }</p>
+<p>xs &lt;- transpose(list(1:100, (1:100)^2)) square &lt;- list2fun(xs) square(24)</p>
+<p>fun2list &lt;- function(f) { function(xs) { transpose(list(xs, map(xs, f))) } }</p>
+<p>double &lt;- function(x) x*2</p>
+<p>fun2list(double)(1:10)</p>
+</div>
