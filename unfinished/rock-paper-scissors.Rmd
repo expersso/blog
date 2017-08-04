@@ -1,0 +1,55 @@
+# ---
+# title: Rock, Paper, Scissors in R
+# author: EP
+# date: '2017-07-30'
+# categories:
+#   - R
+# tags:
+#   - functional programming
+#   - algebra
+# ---
+
+```{r}
+library(tidyverse)
+
+rps <- function(x) {
+  stopifnot(x %in% c("r", "p", "s"))
+  structure(x, class = c("rps", class(x)))
+}
+
+print.rps <- function(x) {
+  out <- case_when(
+    x == "r" ~ "Rock",
+    x == "p" ~ "Paper",
+    x == "s" ~ "Scissors"
+    )
+  cat(out, " ")
+}
+
+`[.rps` <- function(xs, i) {
+  rps(NextMethod())
+}
+
+`+.rps` <- function(e1, e2) {
+  e1 <- unclass(e1)
+  e2 <- unclass(e2)
+
+  out <- case_when(
+    e1 == "r" && e2 == "p" ~ "p",
+    e1 == "p" && e2 == "s" ~ "s",
+    e1 == "s" && e2 == "r" ~ "r",
+    TRUE ~ e1
+  )
+  rps(out)
+}
+
+sum.rps <- function(xs, na.rm = TRUE) {
+  reduce(xs, `+`, .init = head(xs, 1))
+}
+
+xs <- rps(sample(c("r", "p", "s"), 10, TRUE))
+sum(xs)
+
+(rps("r") + rps("s")) + rps("p")
+ rps("r") + (rps("s") + rps("p"))
+```

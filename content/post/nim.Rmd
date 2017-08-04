@@ -20,7 +20,7 @@ In a second post, we will use a bit of object-oriented programming (using R's S3
 system) to implement a quirky algebra called
 [Nimbers](https://en.wikipedia.org/wiki/Nimber), and show how these can be used
 to "solve" Nim. With this solution, we can then generalize the game by 
-implementing a computer opponent playing a perfect strategy.
+implementing a computer-opponent playing a perfect strategy.
 
 In a final post, we will wrap this all up as a Shiny app, to do away with the
 need for an R installation to play the game.

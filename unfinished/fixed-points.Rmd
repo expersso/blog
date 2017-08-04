@@ -1,0 +1,107 @@
+# ---
+# title: Fixed points
+# author: EP
+# date: '2017-07-30'
+# categories:
+#   - R
+# tags:
+#   - functional programming
+#   - mathematics
+# ---
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+
+Fix <- function(f) {
+  function(...) {
+    out <- f(...)
+    equals <- map2_lgl(out, f(out), compose(isTRUE, all.equal))
+    unique(out[equals])
+  }
+}
+
+f <- function(x) x^3
+
+all(Fix(f)(-10:10) == f(Fix(f)(-10:10)))
+```
+
+```{r}
+plot_fixed_point <- function(f, xs) {
+  df <- data_frame(x = xs,
+                   y = ifelse(x %in% Fix(f)(x), x, NA)) %>% 
+    filter(!is.na(y))
+
+  ggplot(data.frame(x = xs), aes(x)) +
+    geom_hline(yintercept = 0, size = 0.1) +
+    geom_vline(xintercept = 0, size = 0.1) +
+    stat_function(fun = f, color = "blue") +
+    stat_function(fun = function(x) x, color = "red") +
+    geom_point(aes(y = y), data = df) +
+    geom_text(aes(y = y, label = sprintf("(%s,%s)", x, y)), 
+              data = df, size = 3, hjust = 0, vjust = 1) +
+    coord_equal(ylim = range(xs))
+}
+```
+
+```{r}
+domain <- -10:10
+plot_fixed_point(function(x) x^2, domain)
+```
+
+```{r}
+plot_fixed_point(function(x) x^3, domain)
+```
+
+```{r}
+plot_fixed_point(sin, domain)
+```
+
+
+```{r}
+plot_fixed_point(cos, domain)
+```
+
+[Attractive fixed
+point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points)
+
+```{r}
+afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
+afp
+```
+
+```{r}
+plot_fixed_point(cos, domain) +
+  geom_point(aes(x = afp, y = afp))
+```
+
+```{r}
+iter_apply <- function(f, n, .init, ...) {
+  reduce(seq_len(n), function(x, y) f(x, ...), .init = .init)
+}
+
+iter_apply(function(x) x + 2, 3, 0)
+iter_apply(cos, 10, -1)
+```
+
+
+```{r}
+is_even      <- function(x) x %% 2 == 0
+is_magic     <- function(x) x == 13
+is_less_than <- function(n) function(x) x < n
+
+keep(1:20, ~is_even(.) && !is_less_than(10)(.) || is_magic(.))
+```
+
+```{r}
+fs <- list(sin, function(x) x^2, cos)
+lift(compose)(fs)(1:5)
+```
+
+```{r}
+`%.%` <- function(f1, f2) function(...) f1(f2(...))
+(fs[[1]] %.% fs[[2]] %.% fs[[3]])(1:5)
+```
