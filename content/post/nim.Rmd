@@ -22,8 +22,8 @@ system) to implement a quirky algebra called
 to "solve" Nim. With this solution, we can then generalize the game by 
 implementing a computer-opponent playing a perfect strategy.
 
-In a final post, we will wrap this all up as a Shiny app, to do away with the
-need for an R installation to play the game.
+In a (potential) final post, we will wrap this all up as a Shiny app, to do away
+with the need for an R installation to play the game.
 
 A caveat before we start; Nim is, frankly, not a terribly fun game to play. So
 the reader shouldn't be too concerned with the game itself, but rather focus on
