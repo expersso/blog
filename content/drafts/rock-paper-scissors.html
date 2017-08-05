@@ -1,0 +1,85 @@
+
+
+
+<div id="section" class="section level1">
+<h1>—</h1>
+</div>
+<div id="title-rock-paper-scissors-in-r" class="section level1">
+<h1>title: Rock, Paper, Scissors in R</h1>
+</div>
+<div id="author-ep" class="section level1">
+<h1>author: EP</h1>
+</div>
+<div id="date-2017-07-30" class="section level1">
+<h1>date: ‘2017-07-30’</h1>
+</div>
+<div id="categories" class="section level1">
+<h1>categories:</h1>
+</div>
+<div id="r" class="section level1">
+<h1>- R</h1>
+</div>
+<div id="tags" class="section level1">
+<h1>tags:</h1>
+</div>
+<div id="functional-programming" class="section level1">
+<h1>- functional programming</h1>
+</div>
+<div id="algebra" class="section level1">
+<h1>- algebra</h1>
+</div>
+<div id="section-1" class="section level1">
+<h1>—</h1>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## Loading tidyverse: ggplot2
+## Loading tidyverse: tibble
+## Loading tidyverse: tidyr
+## Loading tidyverse: readr
+## Loading tidyverse: purrr
+## Loading tidyverse: dplyr</code></pre>
+<pre><code>## Conflicts with tidy packages ----------------------------------------------</code></pre>
+<pre><code>## filter(): dplyr, stats
+## lag():    dplyr, stats</code></pre>
+<pre class="r"><code>rps &lt;- function(x) {
+  stopifnot(x %in% c(&quot;r&quot;, &quot;p&quot;, &quot;s&quot;))
+  structure(x, class = c(&quot;rps&quot;, class(x)))
+}
+
+print.rps &lt;- function(x) {
+  out &lt;- case_when(
+    x == &quot;r&quot; ~ &quot;Rock&quot;,
+    x == &quot;p&quot; ~ &quot;Paper&quot;,
+    x == &quot;s&quot; ~ &quot;Scissors&quot;
+    )
+  cat(out, &quot; &quot;)
+}
+
+`[.rps` &lt;- function(xs, i) {
+  rps(NextMethod())
+}
+
+`+.rps` &lt;- function(e1, e2) {
+  e1 &lt;- unclass(e1)
+  e2 &lt;- unclass(e2)
+
+  out &lt;- case_when(
+    e1 == &quot;r&quot; &amp;&amp; e2 == &quot;p&quot; ~ &quot;p&quot;,
+    e1 == &quot;p&quot; &amp;&amp; e2 == &quot;s&quot; ~ &quot;s&quot;,
+    e1 == &quot;s&quot; &amp;&amp; e2 == &quot;r&quot; ~ &quot;r&quot;,
+    TRUE ~ e1
+  )
+  rps(out)
+}
+
+sum.rps &lt;- function(xs, na.rm = TRUE) {
+  reduce(xs, `+`, .init = head(xs, 1))
+}
+
+xs &lt;- rps(sample(c(&quot;r&quot;, &quot;p&quot;, &quot;s&quot;), 10, TRUE))
+sum(xs)</code></pre>
+<pre><code>## Scissors</code></pre>
+<pre class="r"><code>(rps(&quot;r&quot;) + rps(&quot;s&quot;)) + rps(&quot;p&quot;)</code></pre>
+<pre><code>## Paper</code></pre>
+<pre class="r"><code> rps(&quot;r&quot;) + (rps(&quot;s&quot;) + rps(&quot;p&quot;))</code></pre>
+<pre><code>## Rock</code></pre>
+</div>

@@ -1,0 +1,154 @@
+---
+title: Implementing a perfect-playing Nim opponent in R
+author: EP
+date: '2017-08-05'
+categories:
+  - R
+tags:
+  - functional programming
+  - combinatorial game theory
+---
+
+
+
+<div id="its-time-for-some-combinatorial-game-theory" class="section level2">
+<h2>It’s time for some (combinatorial) game theory</h2>
+<p>In a <a href="/2017/08/04/implementing-nim-in-r">previous post</a> we wrote a program that allows you to play a game of Nim against another human opponent. In this post we will show how we can modify our initial program to also allow for play against a computer-opponent. To understand how this is possible, however, we must first discuss a bit of algebra.</p>
+<p>As mentioned in the previous post, the game of Nim gives rise to a special type of numbers called, naturally, “nimbers”. These numbers look similar to regular integers, but they are added together by performing a bitwise xor operation on their binary representations. So how does this work?</p>
+<p>Consider the numbers 4 and 7. In binary, these would be represented as 100 and 111, respectively. The xor operator takes two bits (0s or 1s) as input and returns a 1 if exactly one of the two inputs are 1, and otherwise returns 0.</p>
+<p>For example:</p>
+<pre class="r"><code>xor(0,0)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>xor(0,1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>xor(1,0)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>xor(1,1)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>To perform the bitwise xor operation on two numbers, therefore, means we take two numbers, convert them to binary, line them up, and perform the xor operation on each consecutive pair of bits. In the case of 4 and 7 we thus get:</p>
+<pre class="r"><code>head(intToBits(4))</code></pre>
+<pre><code>## [1] 00 00 01 00 00 00</code></pre>
+<pre class="r"><code>head(intToBits(7))</code></pre>
+<pre><code>## [1] 01 01 01 00 00 00</code></pre>
+<pre class="r"><code>head(intToBits(bitwXor(4, 7)))</code></pre>
+<pre><code>## [1] 01 01 00 00 00 00</code></pre>
+<p>(R gives the binary representation from left to right, so e.g. 4 = 001 here. We’re also wrapping everything in <code>head</code> to avoid printing out a ton of zeros). So the <code>bitwXor</code> first looks at 0 and 1 and evaluates to 1, then 1 and 0 gives 1 again, and finally 1 and 1 gives 0. So <code>bitwXor(4,7)</code> = 110 (in binary) = 3 (in decimal).</p>
+<p>We said earlier that bitwise xor is how you add together two nimbers, so it would be convenient if we could use standard notation and just write <span class="math inline">\(4 + 7 = 3\)</span>. Luckily, R’s beautifully minimalist S3 system is perfectly suited for this. (Btw, <a href="https://twitter.com/thomasmailund">Thomas Mailund’s</a> <a href="https://www.amazon.com/Object-oriented-Programming-Advanced-Statistical/dp/1520516762">Object-oriented Programming in R</a> is, in my view, the most accessible and comprehensive introduction to S3.)</p>
+<p>(By taking this approach we’re actually severely over-engineering the solution, but it’s a good excuse to play around with S3.)</p>
+<p>We start by defining a constructor function, which simply tags a number as a nimber:</p>
+<pre class="r"><code>nimber &lt;- function(x) {
+  structure(x, class = c(&quot;nimber&quot;, class(x)))
+}
+
+nimber(5)</code></pre>
+<pre><code>## [1] 5
+## attr(,&quot;class&quot;)
+## [1] &quot;nimber&quot;  &quot;numeric&quot;</code></pre>
+<p>We then implement a pretty-printing method (the <code>unclass</code> call here is necessary to avoid infinite recursive calls to <code>print</code>.):</p>
+<pre class="r"><code>print.nimber &lt;- function(x) {
+  cat(&quot;Nimbers:\n&quot;)
+  print(unclass(x))
+}
+
+nimber(1:5)</code></pre>
+<pre><code>## Nimbers:
+## [1] 1 2 3 4 5</code></pre>
+<p>With that out of the way, we can now overload the <code>+</code> operator so that nimber addition is defined as bitwise xor:</p>
+<pre class="r"><code>`+.nimber` &lt;- function(e1, e2) {
+  nimber(bitwXor(e1, e2))
+}
+
+nimber(4) + nimber(7)</code></pre>
+<pre><code>## Nimbers:
+## [1] 3</code></pre>
+<p>We can also implement a <code>[</code> method, so that we can index into a vector of nimbers without those nimbers being converted into numbers:</p>
+<pre class="r"><code>nimber(1:5)[3]</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>`[.nimber` &lt;- function(x, i) {
+  nimber(NextMethod())
+}
+
+nimber(1:5)[3]</code></pre>
+<pre><code>## Nimbers:
+## [1] 3</code></pre>
+<p>Finally, we would like to be able to take sum of a vector of nimbers. We implement the <code>sum</code> method using <code>purrr::reduce</code>:</p>
+<pre class="r"><code>library(purrr)
+
+sum.nimber &lt;- function(x, na.rm = TRUE) {
+  reduce(x, `+`, .init = nimber(0))
+}
+
+sum(nimber(c(4, 7)))</code></pre>
+<pre><code>## Nimbers:
+## [1] 3</code></pre>
+<pre class="r"><code>sum(nimber(1:5))</code></pre>
+<pre><code>## Nimbers:
+## [1] 1</code></pre>
+<p>The mathematically-inclined reader might wonder if this is a legitimate way to sum a set of nimbers. Indeed it is; bitwise xor is associative with 0 as the identity element. In fact, every nimber is its own inverse (e.g. 100101 bitwised xor’ed with itself will produce 000000 = 0, the identity element) and the order in which we perform the operation is irrelevant. Hence, the nimbers actually form an abelian group under nim-addition. To be even more precise, since every element except the identity is of order 2, they form a <a href="https://proofwiki.org/wiki/Definition%3aBoolean_Group">Boolean group</a>.</p>
+<p>So what does all of this have to do with a computer playing Nim? Well, it turns out that if we treat the number of pebbles in a Nim heap as a nimber, then any game board can be represented by the nim sum of all the heaps. This sum will then either be zero or non-zero, and a player can always make a move that takes a non-zero-sum board and produces a zero-sum board. The key insight from the mathematical analysis of Nim is that the optimal move is always to produce a zero-sum board. (We omit all proofs and details here. See the <a href="https://en.wikipedia.org/wiki/Nim#Mathematical_theory">Wikipedia entry</a> for some quite accessible proofs and examples).</p>
+<p>So we can define an <code>optimal_move</code> function, which takes a board as input, calculates the nim sum of the board, randomly selects a row among the rows that have a certain desired property, removes the number of pebbles necessary to produce a zero-sum board, and returns the optimal move:</p>
+<pre class="r"><code>resample &lt;- function(x, ...) {
+  x[sample.int(length(x), ...)]
+}
+
+optimal_move &lt;- function(board) {
+  board_sum &lt;- sum(board)
+  row &lt;- resample(which(board + board_sum &lt; board), 1)
+  num &lt;- board[row] - (board[row] + board_sum)
+  c(&quot;row&quot; = row, &quot;num&quot; = num)
+}</code></pre>
+<p>(<code>resample</code> is just a more stable version of <code>sample</code>). Below, we make sure that the board is always of class <code>nimber</code>, so that the <code>sum</code> call gets dispatched to <code>sum.nimber</code>.</p>
+<p>If a player is presented with a zero-sum board, however, any move will produce a non-zero-sum board. For this situation, we will let the computer play a random move:</p>
+<pre class="r"><code>random_move &lt;- function(board) {
+  row &lt;- resample(seq_along(board[board != 0]), 1)
+  num &lt;- resample(range(1, board[row]), 1)
+  c(&quot;row&quot; = row, &quot;num&quot; = num)
+}</code></pre>
+<p>Finally, we wrap these two strategies into a function that takes a board as input, checks the nim-sum of the board, and chooses the appropriate strategy:</p>
+<pre class="r"><code>computer_move &lt;- function(board) {
+  board_sum &lt;- sum(board)
+  when(board_sum,
+       . == 0 ~ random_move(board),
+       . != 0 ~ optimal_move(board))
+}</code></pre>
+<p>(yes, for the optimal move case we’re unnecessarily calculating the board-sum twice, but we’ll ignore that for didactic purposes.)</p>
+<p>Thanks to the way we originally structured the game, refactoring the <code>nim</code> function to allow for a computer opponent is now straightforward. We just have to add a <code>comp_opponent</code> argument, make sure that the board is always of class <code>nimber</code>, and generate a computer move if it’s the computer’s turn to move:</p>
+<pre class="r"><code># These remain unchanged
+next_player &lt;- function(player) if(player == 1) 2 else 1
+valid_move  &lt;- function(board, row, num) num &gt; 0 &amp;&amp; board[row] &gt;= num
+finished    &lt;- function(board) all(board == 0)
+update      &lt;- function(board, row, num) `[&lt;-`(board, row, board[row] - num)
+disp_row    &lt;- function(row, num) cat(row, &quot;:&quot;, rep(&quot;*&quot;, num), &quot;\n&quot;)
+disp_board  &lt;- function(board) walk2(seq_along(board), board, disp_row)
+get_move    &lt;- function() {
+  row &lt;- as.integer(readline(&quot;Choose a row: &quot;))
+  num &lt;- as.integer(readline(&quot;Number of stars to remove: &quot;))
+  c(&quot;row&quot; = row, &quot;num&quot; = num)
+}
+
+nim &lt;- function(board = 5:1, player = 1, comp_opponent = TRUE) {
+  if(!inherits(board, &quot;nimber&quot;)) {
+    board &lt;- nimber(board)
+  }
+
+  if(finished(board)) {
+    cat(&quot;Game over. Player&quot;, next_player(player), &quot;wins!&quot;)
+    return(invisible())
+  }
+
+  disp_board(board)
+  cat(&quot;Player&quot;, player, &quot;\n&quot;)
+  play &lt;- if(player == 2 &amp;&amp; comp_opponent)
+    computer_move(board)
+  else get_move()
+
+  row  &lt;- play[&quot;row&quot;]
+  num  &lt;- play[&quot;num&quot;]
+
+  if(!valid_move(board, row, num)) {
+    cat(&quot;Not a valid move. Try again.\n&quot;)
+    nim(board, player)
+  } else nim(update(board, row, num), next_player(player))
+}</code></pre>
+<p>An interesting extension would be to add a <code>difficulty</code> parameter to <code>nim</code>, which would allow a player to specify how often the computer plays the optimal move. We’ll leave this as an exercise (hint: <code>runif</code> will probably be your friend here).</p>
+</div>

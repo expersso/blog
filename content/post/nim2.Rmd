@@ -1,34 +1,32 @@
-# ---
-# title: Implementing a perfect-playing Nim opponent in R
-# author: EP
-# date: '2017-07-30'
-# categories:
-#   - R
-# tags:
-#   - functional programming
-#   - combinatorial game theory
-# ---
+---
+title: Implementing a perfect-playing Nim opponent in R
+author: EP
+date: '2017-08-05'
+categories:
+  - R
+tags:
+  - functional programming
+  - combinatorial game theory
+---
 
 ## It's time for some (combinatorial) game theory
 
-In a previous post we wrote a program that allows you to play a game of Nim
-against another human opponent. Now, to be perfectly frank, Nim is not a very
-fun game to play, so I think many readers would be hard-pressed to find somebody
-to play against. Luckily, it turns out that it's very simple to modify our
-initial program to also allow for play against a computer-opponent. To
-understand how this is possible, however, we must first discuss a bit of
-algebra.
+In a [previous post](/2017/08/04/implementing-nim-in-r) we wrote a program that 
+allows you to play a game of Nim against another human opponent.  In this post
+we will show how we can modify our initial program to also allow for play 
+against a computer-opponent. To understand how this is possible, however, we 
+must first discuss a bit of algebra.
 
-As mentioned in the previous post, the game of Nim gives rise to a special type
-of numbers called, naturally, "nimbers" (mathematicians are clearly not immune
-to dad jokes). These numbers look similar to regular integers, but they are
-added together by performing a bitwise xor operation on their binary
-representations. So how does this work?
+As mentioned in the previous post, the game of Nim gives rise to a special type 
+of numbers called, naturally, "nimbers". These numbers look similar to regular
+integers, but they are added together by performing a bitwise xor operation on
+their binary representations. So how does this work?
 
 Consider the numbers 4 and 7. In binary, these would be represented as 100 and
 111, respectively. The xor operator takes two bits (0s or 1s) as input and
-returns a 1 if exactly one of the two inputs are 1, and otherwise returns 0. For
-example:
+returns a 1 if exactly one of the two inputs are 1, and otherwise returns 0. 
+
+For example:
 
 ```{r}
 xor(0,0)
@@ -39,7 +37,7 @@ xor(1,1)
 
 To perform the bitwise xor operation on two numbers, therefore, means we
 take two numbers, convert them to binary, line them up, and perform the xor
-operation on each consequtive pair of bits. In the case of 4 and 7 we thus get:
+operation on each consecutive pair of bits. In the case of 4 and 7 we thus get:
 
 ```{r bits}
 head(intToBits(4))
@@ -53,9 +51,15 @@ So the `bitwXor` first looks at 0 and 1 and evaluates to 1, then 1 and 0 gives 1
 again, and finally 1 and 1 gives 0. So `bitwXor(4,7)` = 110 (in binary) = 3 (in
 decimal).
 
-We said earlier that bitwise xor is how you add together two nimbers, so it
-would be convenient if we could use standard notation and just write $4 + 7 =
-3$. Luckily, R's beautifully minimalist S3 system is perfectly suited for this.
+We said earlier that bitwise xor is how you add together two nimbers, so it 
+would be convenient if we could use standard notation and just write $4 + 7 = 
+3$. Luckily, R's beautifully minimalist S3 system is perfectly suited for this. 
+(Btw, [Thomas Mailund's](https://twitter.com/thomasmailund) [Object-oriented Programming in
+R](https://www.amazon.com/Object-oriented-Programming-Advanced-Statistical/dp/1520516762)
+is, in my view, the most accessible and comprehensive introduction to S3.)
+
+(By taking this approach we're actually severely over-engineering the solution,
+but it's a good excuse to play around with S3.)
 
 We start by defining a constructor function, which simply tags a number as a
 nimber:
@@ -104,7 +108,8 @@ nimber(1:5)[3]
 nimber(1:5)[3]
 ```
 
-Finally, we would like to be able to take sum of a vector of nimbers. We implement the `sum` method using `purrr::reduce`:
+Finally, we would like to be able to take sum of a vector of nimbers. We
+implement the `sum` method using `purrr::reduce`:
 
 ```{r}
 library(purrr)
@@ -117,27 +122,27 @@ sum(nimber(c(4, 7)))
 sum(nimber(1:5))
 ```
 
-(The mathematically-inclined reader might wonder if this is a legitimate way to
+The mathematically-inclined reader might wonder if this is a legitimate way to
 sum a set of nimbers. Indeed it is; bitwise xor is associative with 0 as the
 identity element. In fact, every nimber is its own inverse (e.g. 100101 bitwised
 xor'ed with itself will produce 000000 = 0, the identity element) and the order
 in which we perform the operation is irrelevant. Hence, the nimbers actually
 form an abelian group under nim-addition. To be even more precise, since every
 element except the identity is of order 2, they form a
-(https://proofwiki.org/wiki/Definition%3aBoolean_Group)[Boolean group])
+[Boolean group](https://proofwiki.org/wiki/Definition%3aBoolean_Group).
 
 So what does all of this have to do with a computer playing Nim? Well, it turns
 out that if we treat the number of pebbles in a Nim heap as a nimber, then any
-game board can be represented by nim-summing up all the heaps. This sum will
+game board can be represented by the nim sum of all the heaps. This sum will
 then either be zero or non-zero, and a player can always make a move that takes
 a non-zero-sum board and produces a zero-sum board. The key insight from the
 mathematical analysis of Nim is that the optimal move is always to produce a
 zero-sum board. (We omit all proofs and details here. See the
-(https://en.wikipedia.org/wiki/Nim#Mathematical_theory)[Wikipedia entry] for
+[Wikipedia entry](https://en.wikipedia.org/wiki/Nim#Mathematical_theory) for
 some quite accessible proofs and examples).
 
 So we can define an `optimal_move` function, which takes a board as input,
-calculates the nim-sum of the board, randomly selects a row among the rows that
+calculates the nim sum of the board, randomly selects a row among the rows that
 have a certain desired property, removes the number of pebbles necessary to
 produce a zero-sum board, and returns the optimal move:
 
@@ -158,7 +163,9 @@ optimal_move <- function(board) {
 the board is always of class `nimber`, so that the `sum` call gets dispatched to
 `sum.nimber`.
 
-While we're at it, we can also implement a random move function:
+If a player is presented with a zero-sum board, however, any move will produce a
+non-zero-sum board. For this situation, we will let the computer play a random
+move:
 
 ```{r}
 random_move <- function(board) {
@@ -167,6 +174,9 @@ random_move <- function(board) {
   c("row" = row, "num" = num)
 }
 ```
+
+Finally, we wrap these two strategies into a function that takes a board as
+input, checks the nim-sum of the board, and chooses the appropriate strategy:
 
 ```{r}
 computer_move <- function(board) {
@@ -177,9 +187,12 @@ computer_move <- function(board) {
 }
 ```
 
-Thanks to the way we originally structured the game, refactoring the `nim`
-function to allow for a computer opponent is straightforward. We just have to
-add a `comp_opponent` argument, make sure that the board is always of class
+(yes, for the optimal move case we're unnecessarily calculating the board-sum
+twice, but we'll ignore that for didactic purposes.)
+
+Thanks to the way we originally structured the game, refactoring the `nim` 
+function to allow for a computer opponent is now straightforward. We just have
+to add a `comp_opponent` argument, make sure that the board is always of class 
 `nimber`, and generate a computer move if it's the computer's turn to move:
 
 ```{r game_w_computer_moves}
@@ -221,3 +234,8 @@ nim <- function(board = 5:1, player = 1, comp_opponent = TRUE) {
   } else nim(update(board, row, num), next_player(player))
 }
 ```
+
+An interesting extension would be to add a `difficulty` parameter to `nim`, 
+which would allow a player to specify how often the computer plays the optimal
+move. We'll leave this as an exercise (hint: `runif` will probably be your
+friend here).

@@ -16,11 +16,12 @@ science. In this post we will implement an interactive version of Nim in R using
 a functional style of programming. The implementation will allow the user to
 play a game against a human opponent in an R console.
 
-In a second post, we will use a bit of object-oriented programming (using R's S3
-system) to implement a quirky algebra called
-[Nimbers](https://en.wikipedia.org/wiki/Nimber), and show how these can be used
-to "solve" Nim. With this solution, we can then generalize the game by 
-implementing a computer-opponent playing a perfect strategy.
+In a [second
+post](/2017/08/05/implementing-a-perfect-playing-nim-opponent-in-r), we will use
+a bit of object-oriented programming (using R's S3 system) to implement a quirky
+algebra called [Nimbers](https://en.wikipedia.org/wiki/Nimber), and show how
+these can be used to "solve" Nim. With this solution, we can then generalize the
+game by implementing a computer-opponent playing a perfect strategy.
 
 In a (potential) final post, we will wrap this all up as a Shiny app, to do away
 with the need for an R installation to play the game.
