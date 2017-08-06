@@ -90,7 +90,7 @@ convert the `xlsx` file manually. So we define a helper function that takes a
 url as input, creates a temporary file, downloads the url, reads it in as a data
 frame, and finally unlinks the temporary file.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(lubridate)
@@ -131,7 +131,7 @@ use 'lubridate::ymd` to convert to a `Date` format.
 Finally, we drop an aberrant observation (a date was miscoded and it's not clear
 what the correct date would be) and select only the variables we need.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 sommargaester <- 
   paste0("http://sverigesradio.se/Diverse/AppData/Isidor/",
          "Files/2071/b5aebbfa-cee4-4733-96f5-10fe96edfa91.xlsx") %>% 

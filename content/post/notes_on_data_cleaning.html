@@ -1,0 +1,108 @@
+---
+title: Some notes on data cleaning
+author: EP
+date: '2017-08-06'
+categories:
+  - R
+tags:
+  - data cleaning
+---
+
+
+
+<p><a href="https://twitter.com/ma_salmon">Maëlle Salmon</a> has a <a href="http://www.masalmon.eu/2017/08/06/p1/">new post</a> up where she looks at a data set on guest hosts on a popular Swedish radio show. In the post Maëlle specifically asks for constructive criticism on her code, so here are some thoughts.</p>
+<div id="original-approach" class="section level2">
+<h2>Original approach</h2>
+<p>Maëlle starts by manually downloading an <code>xlsx</code> file and converting it to a <code>csv</code>, which she then reads with <code>readr::read_csv</code>.</p>
+<pre class="r"><code># all summer guests
+sommargaester &lt;- readr::read_csv(&quot;data/p1sommar.csv&quot;, col_names = FALSE, 
+                                 locale = readr::locale(encoding = &quot;latin1&quot;))</code></pre>
+<p>To deal with the fact that the names are of the form “Last name, First name”, she then defines a function to split the names, creates a new data frame with those names, and then left joins that data frame to the original one.</p>
+<pre class="r"><code># get their names
+sommargaester_names &lt;- unique(sommargaester$X1)
+
+# for putting names in the right order for later queries
+transform_name &lt;- function(name){
+  paste(stringr::str_split(name, &quot;,&quot;,
+                           simplify = TRUE)[2],
+        stringr::str_split(name, &quot;,&quot;,
+                           simplify = TRUE)[1])
+}
+
+pretty_sommargaester_names &lt;- purrr::map_chr(sommargaester_names, transform_name)
+sommargaester_names &lt;- tibble::tibble(name = pretty_sommargaester_names,
+                                      X1 = sommargaester_names)
+sommargaester &lt;- dplyr::left_join(sommargaester, sommargaester_names,
+                                  by = &quot;X1&quot;)
+
+sommargaester &lt;- dplyr::select(sommargaester, - X1)</code></pre>
+<p>She then gathers the dates into a single <code>date</code> variable and generates a <code>rep</code> variable by grouping on <code>name</code>.</p>
+<pre class="r"><code># transform the date
+sommargaester &lt;- tidyr::gather(sommargaester, &quot;rep&quot;, &quot;date&quot;, X2:X7)
+sommargaester &lt;- dplyr::group_by(sommargaester, name)
+sommargaester &lt;- dplyr::mutate(sommargaester, rep = 1:n())
+sommargaester &lt;- dplyr::ungroup(sommargaester)</code></pre>
+<p>Finally, she filters out a bunch of unwanted dates, and converts <code>date</code> to a proper format.</p>
+<pre class="r"><code>sommargaester &lt;- dplyr::filter(sommargaester, !is.na(date))
+# remove winter
+sommargaester &lt;- dplyr::filter(sommargaester, !stringr::str_detect(date, &quot;V&quot;))
+# remove repeat episodes
+sommargaester &lt;- dplyr::filter(sommargaester, !stringr::str_detect(date, &quot;R&quot;))
+
+
+# transform the date to a format with a non ambiguous year
+sommargaester &lt;- dplyr::mutate(sommargaester, date = as.numeric(date))
+sommargaester &lt;- dplyr::mutate(sommargaester, date = ifelse(date &gt; 180000, paste0(&quot;19&quot;, date),
+                                                            ifelse(date &lt; 100000,
+                                                                   paste0(&quot;200&quot;, date),
+                                                                   paste0(&quot;20&quot;, date))))
+sommargaester &lt;- dplyr::mutate(sommargaester, pretty_date = lubridate::ymd(date))</code></pre>
+</div>
+<div id="alternative-approach" class="section level2">
+<h2>Alternative approach</h2>
+<p>Here are some thoughts on how one could’ve done this cleaning in bit differently.</p>
+<p>To make the process more reproducible we want to avoid having to download and convert the <code>xlsx</code> file manually. So we define a helper function that takes a url as input, creates a temporary file, downloads the url, reads it in as a data frame, and finally unlinks the temporary file.</p>
+<pre class="r"><code>library(tidyverse)
+library(stringr)
+library(lubridate)
+
+read_xlsx &lt;- function(url) {
+  tmp &lt;- tempfile(fileext = &quot;.xlsx&quot;)
+  on.exit(unlink(tmp))
+  download.file(url, tmp, mode = &quot;wb&quot;)
+  readxl::read_xlsx(tmp, col_names = FALSE)
+}</code></pre>
+<p>A less-than-optimal pattern I often see is when people have a data frame from which they derived a second data frame with some additional meta data, which they then merge back into the original data frame. This can almost always be avoided. I think one should always strive towards keeping all data relevant to a data frame within that same data frame (this is also why I think people should use list-columns more often).</p>
+<p>To avoid having to make a second data frame with names, we use <code>tidyr::separate</code> to generate two new variable (<code>last</code> and <code>first</code>) which we then paste together into <code>name</code>.</p>
+<p>Given how the original data set was structured, the names of the date columns (“X__2&quot; etc) actually contains the information for the <code>rep</code> variable, so we can just drop the “X__&quot; part and coerce it to a numeric variable. This avoids having to group and ungroup on <code>name</code>.</p>
+<p>Instead of doing two separate filter calls with <code>str_detect</code> we can use a regular expression.</p>
+<p>To avoid a lot of the issues with cleaning the dates, we can exploit the fact that characters have an order defined on them (e.g. “a” &lt; “b”). So we can simply check if the date is greater than “570000” to get all years from 1957-1999 and then add the “19” prefix to those and “20” to the rest. We then use ’lubridate::ymd<code>to convert to a</code>Date` format.</p>
+<p>Finally, we drop an aberrant observation (a date was miscoded and it’s not clear what the correct date would be) and select only the variables we need.</p>
+<pre class="r"><code>sommargaester &lt;- 
+  paste0(&quot;http://sverigesradio.se/Diverse/AppData/Isidor/&quot;,
+         &quot;Files/2071/b5aebbfa-cee4-4733-96f5-10fe96edfa91.xlsx&quot;) %&gt;% 
+  read_xlsx() %&gt;% 
+  separate(X__1, c(&quot;last&quot;, &quot;first&quot;), &quot;,&quot;) %&gt;% 
+  mutate(name = paste(first, last)) %&gt;%
+  gather(rep, date, starts_with(&quot;X&quot;)) %&gt;% 
+  mutate(rep = as.numeric(str_replace(rep, &quot;X__&quot;, &quot;&quot;))) %&gt;% 
+  filter(!str_detect(date, &quot;[VR]&quot;)) %&gt;% 
+  mutate(date = if_else(date &gt;= &quot;570000&quot;, 
+                        paste0(&quot;19&quot;, date), 
+                        paste0(&quot;20&quot;, date)),
+         date = ymd(date)) %&gt;% 
+  filter(!is.na(date)) %&gt;% 
+  select(name, rep, date)
+  
+head(sommargaester)</code></pre>
+<pre><code>## # A tibble: 6 × 3
+##                         name   rep       date
+##                        &lt;chr&gt; &lt;dbl&gt;     &lt;date&gt;
+## 1             Lars-Eric Aaro     2 2011-07-14
+## 2            Magdi Abdelhadi     2 2007-08-09
+## 3 Sherihan &#39;Cherrie&#39; Abdulle     2 2017-07-06
+## 4                Anton Abele     2 2013-07-25
+## 5              Folke Abenius     2 1980-06-27
+## 6     Kjell-Albin Abrahamson     2 1988-08-09</code></pre>
+<p>With these few tricks, we’ve reduced the cleaning section from 2040 to 871 characters, for a reduction of about 60%, without reducing its readability.</p>
+</div>
