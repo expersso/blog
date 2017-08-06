@@ -1,0 +1,155 @@
+---
+title: Some notes on data cleaning
+author: EP
+date: '2017-08-06'
+categories:
+  - R
+tags:
+  - data cleaning
+---
+
+[Maëlle Salmon](https://twitter.com/ma_salmon) has a [new 
+post](http://www.masalmon.eu/2017/08/06/p1/) up where she looks at a data set on
+guest hosts on a popular Swedish radio show. In the post Maëlle specifically 
+asks for constructive criticism on her code, so here are some thoughts.
+
+## Original approach
+
+Maëlle starts by manually downloading an `xlsx` file and converting it to a
+`csv`, which she then reads with `readr::read_csv`.
+
+```{r, eval=FALSE}
+# all summer guests
+sommargaester <- readr::read_csv("data/p1sommar.csv", col_names = FALSE, 
+                                 locale = readr::locale(encoding = "latin1"))
+```
+
+To deal with the fact that the names are of the form "Last name, First name",
+she then defines a function to split the names, creates a new data frame with
+those names, and then left joins that data frame to the original one. 
+
+```{r, eval=FALSE}
+# get their names
+sommargaester_names <- unique(sommargaester$X1)
+
+# for putting names in the right order for later queries
+transform_name <- function(name){
+  paste(stringr::str_split(name, ",",
+                           simplify = TRUE)[2],
+        stringr::str_split(name, ",",
+                           simplify = TRUE)[1])
+}
+
+pretty_sommargaester_names <- purrr::map_chr(sommargaester_names, transform_name)
+sommargaester_names <- tibble::tibble(name = pretty_sommargaester_names,
+                                      X1 = sommargaester_names)
+sommargaester <- dplyr::left_join(sommargaester, sommargaester_names,
+                                  by = "X1")
+
+sommargaester <- dplyr::select(sommargaester, - X1)
+```
+
+She then gathers the dates into a single `date` variable and generates a `rep`
+variable by grouping on `name`.
+
+```{r, eval=FALSE}
+# transform the date
+sommargaester <- tidyr::gather(sommargaester, "rep", "date", X2:X7)
+sommargaester <- dplyr::group_by(sommargaester, name)
+sommargaester <- dplyr::mutate(sommargaester, rep = 1:n())
+sommargaester <- dplyr::ungroup(sommargaester)
+```
+
+Finally, she filters out a bunch of unwanted dates, and converts `date` to a
+proper format.
+
+```{r, eval=FALSE}
+sommargaester <- dplyr::filter(sommargaester, !is.na(date))
+# remove winter
+sommargaester <- dplyr::filter(sommargaester, !stringr::str_detect(date, "V"))
+# remove repeat episodes
+sommargaester <- dplyr::filter(sommargaester, !stringr::str_detect(date, "R"))
+
+
+# transform the date to a format with a non ambiguous year
+sommargaester <- dplyr::mutate(sommargaester, date = as.numeric(date))
+sommargaester <- dplyr::mutate(sommargaester, date = ifelse(date > 180000, paste0("19", date),
+                                                            ifelse(date < 100000,
+                                                                   paste0("200", date),
+                                                                   paste0("20", date))))
+sommargaester <- dplyr::mutate(sommargaester, pretty_date = lubridate::ymd(date))
+```
+
+## Alternative approach
+
+Here are some thoughts on how one could've done this cleaning in bit 
+differently.
+
+To make the process more reproducible we want to avoid having to download and 
+convert the `xlsx` file manually. So we define a helper function that takes a
+url as input, creates a temporary file, downloads the url, reads it in as a data
+frame, and finally unlinks the temporary file.
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(lubridate)
+
+read_xlsx <- function(url) {
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  download.file(url, tmp, mode = "wb")
+  readxl::read_xlsx(tmp, col_names = FALSE)
+}
+```
+
+A less-than-optimal pattern I often see is when people have a data frame from 
+which they derived a second data frame with some additional meta data, which 
+they then merge back into the original data frame. This can almost always be 
+avoided. I think one should always strive towards keeping all data relevant to a
+data frame within that same data frame (this is also why I think people should 
+use list-columns more often).
+
+To avoid having to make a second data frame with names, we use `tidyr::separate`
+to generate two new variable (`last` and `first`) which we then paste together
+into `name`.
+
+Given how the original data set was structured, the names of the date columns
+("X__2" etc) actually contains the information for the `rep` variable, so we
+can just drop the "X__" part and coerce it to a numeric variable. This avoids
+having to group and ungroup on `name`.
+
+Instead of doing two separate filter calls with `str_detect` we can use a
+regular expression.
+
+To avoid a lot of the issues with cleaning the dates, we can exploit 
+the fact that characters have an order defined on them (e.g. "a" < "b"). So we 
+can simply check if the date is greater than "570000" to get all years from 
+1957-1999 and then add the "19" prefix to those and "20" to the rest. We then
+use 'lubridate::ymd` to convert to a `Date` format.
+
+Finally, we drop an aberrant observation (a date was miscoded and it's not clear
+what the correct date would be) and select only the variables we need.
+
+```{r}
+sommargaester <- 
+  paste0("http://sverigesradio.se/Diverse/AppData/Isidor/",
+         "Files/2071/b5aebbfa-cee4-4733-96f5-10fe96edfa91.xlsx") %>% 
+  read_xlsx() %>% 
+  separate(X__1, c("last", "first"), ",") %>% 
+  mutate(name = paste(first, last)) %>%
+  gather(rep, date, starts_with("X")) %>% 
+  mutate(rep = as.numeric(str_replace(rep, "X__", ""))) %>% 
+  filter(!str_detect(date, "[VR]")) %>% 
+  mutate(date = if_else(date >= "570000", 
+                        paste0("19", date), 
+                        paste0("20", date)),
+         date = ymd(date)) %>% 
+  filter(!is.na(date)) %>% 
+  select(name, rep, date)
+  
+head(sommargaester)
+```
+
+With these few tricks, we've reduced the cleaning section from 2040 to 871
+characters, for a reduction of about 60%, without reducing its readability.
