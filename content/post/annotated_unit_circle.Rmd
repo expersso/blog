@@ -75,7 +75,7 @@ ggplot(coords_pi, aes(x = x, y = y)) +
 ```
 
 We start by defining a function that, given a radius, generates a data frame of
-of coordinates of a circle centered around the origin.
+coordinates of a circle centered around the origin.
 
 ```{r}
 library(tidyverse)
@@ -99,8 +99,8 @@ one-sixth $\pi$ at each step (we drop the last observation to avoid overlap):
 coords_pi <- get_circle_coords(by = pi / 6) %>% head(-1)
 ```
 
-We can now plot the circle itself as a `geom_path`, the hubs as `geom_point` and
-spokes as `geom_segment`. `theme_void` drops all unnecessary chart junk, and
+We can now plot the circle itself as a `geom_path`, the hubs as `geom_point`,
+and spokes as `geom_segment`. `theme_void` drops all unnecessary chart junk, and
 `coord_equal` makes sure that one unit on the x-axis is equivalent to one unit
 on the y-axis.
 
@@ -145,14 +145,14 @@ coords_pi$trig <- c(
   "(frac(sqrt(3), 2) *','* ~ frac(1,2))",
   "(frac(1, 2) *','* ~ frac(sqrt(3), 2))",
   "(0*','* 1)",
-  "(-frac(sqrt(3), 2) *','* ~ frac(1,2))",
   "(-frac(1, 2) *','* ~ frac(sqrt(3), 2))",
+  "(-frac(sqrt(3), 2) *','* ~ frac(1,2))",
   "(-1*','* 0)",
   "(-frac(sqrt(3), 2) *','* ~ -frac(1,2))",
   "(-frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
   "(0*','* -1)",
-  "(frac(sqrt(3), 2) *','* ~ -frac(1,2))",
-  "(frac(1, 2) *','* ~ -frac(sqrt(3), 2))"
+  "(frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
+  "(frac(sqrt(3), 2) *','* ~ -frac(1,2))"
 )
 ```
 

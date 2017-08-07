@@ -16,7 +16,7 @@ tags:
 <p>I recently needed to an annotated unit circle for some teaching material I was preparing. Rather than using one of the countless pictures already available, I thought it was a good excuse to play around a bit with using mathematical annotations in <code>ggplot2</code>. This post explains the process.</p>
 <p>Here’s what we’ll be working towards:</p>
 <p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-2-1.png" width="480" style="display: block; margin: auto;" /></p>
-<p>We start by defining a function that, given a radius, generates a data frame of of coordinates of a circle centered around the origin.</p>
+<p>We start by defining a function that, given a radius, generates a data frame of coordinates of a circle centered around the origin.</p>
 <pre class="r"><code>library(tidyverse)
 library(scales)
 library(stringr)
@@ -32,7 +32,7 @@ qplot(circ$x, circ$y, geom = &quot;path&quot;)</code></pre>
 <p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-3-1.png" width="480" style="display: block; margin: auto;" /></p>
 <p>Next, we want to generate the coordinates where we go around the unit circle by one-sixth <span class="math inline">\(\pi\)</span> at each step (we drop the last observation to avoid overlap):</p>
 <pre class="r"><code>coords_pi &lt;- get_circle_coords(by = pi / 6) %&gt;% head(-1)</code></pre>
-<p>We can now plot the circle itself as a <code>geom_path</code>, the hubs as <code>geom_point</code> and spokes as <code>geom_segment</code>. <code>theme_void</code> drops all unnecessary chart junk, and <code>coord_equal</code> makes sure that one unit on the x-axis is equivalent to one unit on the y-axis.</p>
+<p>We can now plot the circle itself as a <code>geom_path</code>, the hubs as <code>geom_point</code>, and spokes as <code>geom_segment</code>. <code>theme_void</code> drops all unnecessary chart junk, and <code>coord_equal</code> makes sure that one unit on the x-axis is equivalent to one unit on the y-axis.</p>
 <pre class="r"><code>ggplot(coords_pi, aes(x = x, y = y)) +
   geom_path(data = circ, color = &quot;grey50&quot;) +
   geom_point(color = &quot;grey50&quot;) +
@@ -57,14 +57,14 @@ qplot(circ$x, circ$y, geom = &quot;path&quot;)</code></pre>
   &quot;(frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2))&quot;,
   &quot;(frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2))&quot;,
   &quot;(0*&#39;,&#39;* 1)&quot;,
-  &quot;(-frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2))&quot;,
   &quot;(-frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2))&quot;,
+  &quot;(-frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2))&quot;,
   &quot;(-1*&#39;,&#39;* 0)&quot;,
   &quot;(-frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2))&quot;,
   &quot;(-frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2))&quot;,
   &quot;(0*&#39;,&#39;* -1)&quot;,
-  &quot;(frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2))&quot;,
-  &quot;(frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2))&quot;
+  &quot;(frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2))&quot;,
+  &quot;(frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2))&quot;
 )</code></pre>
 <p>Since we’re going to plot several layers of <code>geom_label</code> we can use <code>purrr::partial</code> to partially apply all the common arguments that these will take:</p>
 <pre class="r"><code>geom_l &lt;- partial(geom_label, size = 2.5, 
