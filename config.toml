@@ -5,7 +5,7 @@ title = "A blog about math and programming"
 theme = "hugo-lithium-theme"
 googleAnalytics = "UA-62282845-2"
 disqusShortname = "ericp"
-ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "content/drafts"]
+ignoreFiles = ["\\.Rmd$", "_files$", "_cache$"]
 
 [permalinks]
     post = "/:year/:month/:day/:slug/"
