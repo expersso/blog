@@ -348,13 +348,17 @@ ggplot(times, aes(x = k, y = time / 1e3, group = expr)) +
   geom_smooth(method = "lm", color = "black", size = 0.1) +
   geom_point(data = df_intersect) +
   geom_text(aes(label = sprintf("(%0.0f, %0.0f)", k, time)),
-            data = df_intersect, vjust = 2, hjust = 0, size = 3) +
+            data = df_intersect, 
+            vjust = 2, hjust = 0, size = 3) +
   guides(color = guide_legend(override.aes = list(alpha = 1))) +
   theme_light() +
-  theme(legend.position = c(1, 0), legend.justification = c(1, 0),
+  theme(legend.position = c(1, 0), 
+        legend.justification = c(1, 0),
         legend.background = element_rect(color = "grey70")) +
   labs(y = "Time (microseconds)", color = NULL,
        title = "Powers of a matrix",
-       subtitle = paste0("Time taken to raise a 3x3 matrix to the", 
-                         " kth power using different approaches"))
+       subtitle = paste0(
+         "Time taken to raise a 3x3 matrix to the", 
+         " kth power using different approaches")
+       )
 ```
