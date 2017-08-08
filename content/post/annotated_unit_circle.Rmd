@@ -24,7 +24,7 @@ annotations in `ggplot2`. This post explains the process.
 
 Here's what we'll be working towards:
 
-```{r, echo=FALSE}
+```{r show_final, echo=FALSE}
 library(tidyverse)
 
 get_circle_coords <- function(r = 1, ...) {
@@ -38,24 +38,30 @@ coords_pi$angle <- seq(0, 330, 30) %>% paste(" * degree")
 coords_pi$pi <- c(
   "0", "frac(pi, 6)", "frac(pi, 3)", "frac(pi, 2)", 
   "frac(2 * pi, 3)", "frac(5 * pi, 6)", "pi",
-  "frac(7 * pi, 6)", "frac(4 * pi, 3)", "frac(2 * pi, 3)", 
+  "frac(7 * pi, 6)", "frac(4 * pi, 3)", "frac(3 * pi, 2)", 
   "frac(5 * pi, 3)", "frac(11 * pi, 6)"
 )
 
 coords_pi$trig <- c(
-  "(1*','* 0)",
-  "(frac(sqrt(3), 2) *','* ~ frac(1,2))",
-  "(frac(1, 2) *','* ~ frac(sqrt(3), 2))",
-  "(0*','* 1)",
-  "(-frac(1, 2) *','* ~ frac(sqrt(3), 2))",
-  "(-frac(sqrt(3), 2) *','* ~ frac(1,2))",
-  "(-1*','* 0)",
-  "(-frac(sqrt(3), 2) *','* ~ -frac(1,2))",
-  "(-frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
-  "(0*','* -1)",
-  "(frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
-  "(frac(sqrt(3), 2) *','* ~ -frac(1,2))"
+  "1*','* 0",
+  "frac(sqrt(3), 2) *','* ~ frac(1,2)",
+  "frac(1, 2) *','* ~ frac(sqrt(3), 2)",
+  "0*','* 1",
+  "-frac(1, 2) *','* ~ frac(sqrt(3), 2)",
+  "-frac(sqrt(3), 2) *','* ~ frac(1,2)",
+  "-1*','* 0",
+  "-frac(sqrt(3), 2) *','* ~ -frac(1,2)",
+  "-frac(1, 2) *','* ~ -frac(sqrt(3), 2)",
+  "0*','* -1",
+  "frac(1, 2) *','* ~ -frac(sqrt(3), 2)",
+  "frac(sqrt(3), 2) *','* ~ -frac(1,2)"
 )
+
+bgroup_ <- function(x) {
+  sprintf("bgroup('(', %s, ')')", x)
+}
+
+coords_pi$trig <- bgroup_(coords_pi$trig)
 
 geom_l <- partial(geom_label, size = 2.5, 
                   label.size = NA, parse = TRUE, color = "firebrick")
@@ -77,7 +83,7 @@ ggplot(coords_pi, aes(x = x, y = y)) +
 We start by defining a function that, given a radius, generates a data frame of
 coordinates of a circle centered around the origin.
 
-```{r}
+```{r just_circle}
 library(tidyverse)
 library(scales)
 library(stringr)
@@ -104,7 +110,7 @@ and spokes as `geom_segment`. `theme_void` drops all unnecessary chart junk, and
 `coord_equal` makes sure that one unit on the x-axis is equivalent to one unit
 on the y-axis.
 
-```{r}
+```{r no_annotations}
 ggplot(coords_pi, aes(x = x, y = y)) +
   geom_path(data = circ, color = "grey50") +
   geom_point(color = "grey50") +
@@ -123,13 +129,16 @@ coords_pi$angle <- seq(0, 330, 30) %>% paste(" * degree")
 
 To properly typeset the fractions of $\pi$ we use R's built-in support for
 mathematical annotation (`?grDevices::plotmath`). Since we only need a few
-annotations, we can hard-code these:
+annotations, we can hard-code these.[^1]
+
+[^1]: Commenter Centerleft spotted [a typo](http://disq.us/p/1l68zb5) in an
+earlier version of this code.
 
 ```{r}
 coords_pi$pi <- c(
   "0", "frac(pi, 6)", "frac(pi, 3)", "frac(pi, 2)", 
   "frac(2 * pi, 3)", "frac(5 * pi, 6)", "pi",
-  "frac(7 * pi, 6)", "frac(4 * pi, 3)", "frac(2 * pi, 3)", 
+  "frac(7 * pi, 6)", "frac(4 * pi, 3)", "frac(3 * pi, 2)", 
   "frac(5 * pi, 3)", "frac(11 * pi, 6)"
 )
 ```
@@ -141,19 +150,32 @@ the signs right for the other quadrants.
 
 ```{r}
 coords_pi$trig <- c(
-  "(1*','* 0)",
-  "(frac(sqrt(3), 2) *','* ~ frac(1,2))",
-  "(frac(1, 2) *','* ~ frac(sqrt(3), 2))",
-  "(0*','* 1)",
-  "(-frac(1, 2) *','* ~ frac(sqrt(3), 2))",
-  "(-frac(sqrt(3), 2) *','* ~ frac(1,2))",
-  "(-1*','* 0)",
-  "(-frac(sqrt(3), 2) *','* ~ -frac(1,2))",
-  "(-frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
-  "(0*','* -1)",
-  "(frac(1, 2) *','* ~ -frac(sqrt(3), 2))",
-  "(frac(sqrt(3), 2) *','* ~ -frac(1,2))"
+  "1*','* 0",
+  "frac(sqrt(3), 2) *','* ~ frac(1,2)",
+  "frac(1, 2) *','* ~ frac(sqrt(3), 2)",
+  "0*','* 1",
+  "-frac(1, 2) *','* ~ frac(sqrt(3), 2)",
+  "-frac(sqrt(3), 2) *','* ~ frac(1,2)",
+  "-1*','* 0",
+  "-frac(sqrt(3), 2) *','* ~ -frac(1,2)",
+  "-frac(1, 2) *','* ~ -frac(sqrt(3), 2)",
+  "0*','* -1",
+  "frac(1, 2) *','* ~ -frac(sqrt(3), 2)",
+  "frac(sqrt(3), 2) *','* ~ -frac(1,2)"
 )
+```
+
+As pointed out by Rob Creel in a [comment](http://disq.us/p/1l5wlja), we can
+also use the `bgroup` expression to make sure that fractions are enclosed by
+scalable parentheses. To avoid making the already messy hard-coded string even
+messier, we define a helper function for this.
+
+```{r}
+bgroup_ <- function(x) {
+  sprintf("bgroup('(', %s, ')')", x)
+}
+
+coords_pi$trig <- bgroup_(coords_pi$trig)
 ```
 
 Since we're going to plot several layers of `geom_label` we can use
@@ -168,7 +190,7 @@ geom_l <- partial(geom_label, size = 2.5,
 
 Lastly, we plot the final illustration:
 
-```{r}
+```{r final}
 ggplot(coords_pi, aes(x = x, y = y)) +
   geom_path(data = circ, color = "grey50") +
   geom_point(color = "grey50") +

@@ -15,7 +15,7 @@ tags:
 <p><em>The unit circle: everybody’s favorite circle.</em></p>
 <p>I recently needed to an annotated unit circle for some teaching material I was preparing. Rather than using one of the countless pictures already available, I thought it was a good excuse to play around a bit with using mathematical annotations in <code>ggplot2</code>. This post explains the process.</p>
 <p>Here’s what we’ll be working towards:</p>
-<p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-2-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p><img src="/post/annotated_unit_circle_files/figure-html/show_final-1.png" width="480" style="display: block; margin: auto;" /></p>
 <p>We start by defining a function that, given a radius, generates a data frame of coordinates of a circle centered around the origin.</p>
 <pre class="r"><code>library(tidyverse)
 library(scales)
@@ -29,7 +29,7 @@ get_circle_coords &lt;- function(r = 1, ...) {
 
 circ &lt;- get_circle_coords(length.out = 200)
 qplot(circ$x, circ$y, geom = &quot;path&quot;)</code></pre>
-<p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-3-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p><img src="/post/annotated_unit_circle_files/figure-html/just_circle-1.png" width="480" style="display: block; margin: auto;" /></p>
 <p>Next, we want to generate the coordinates where we go around the unit circle by one-sixth <span class="math inline">\(\pi\)</span> at each step (we drop the last observation to avoid overlap):</p>
 <pre class="r"><code>coords_pi &lt;- get_circle_coords(by = pi / 6) %&gt;% head(-1)</code></pre>
 <p>We can now plot the circle itself as a <code>geom_path</code>, the hubs as <code>geom_point</code>, and spokes as <code>geom_segment</code>. <code>theme_void</code> drops all unnecessary chart junk, and <code>coord_equal</code> makes sure that one unit on the x-axis is equivalent to one unit on the y-axis.</p>
@@ -41,31 +41,37 @@ qplot(circ$x, circ$y, geom = &quot;path&quot;)</code></pre>
   ylim(-1.2, 1.2) +
   theme_void() +
   coord_equal()</code></pre>
-<p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-5-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p><img src="/post/annotated_unit_circle_files/figure-html/no_annotations-1.png" width="480" style="display: block; margin: auto;" /></p>
 <p>We add a character variable that gives the equivalent angles in degrees:</p>
 <pre class="r"><code>coords_pi$angle &lt;- seq(0, 330, 30) %&gt;% paste(&quot; * degree&quot;)</code></pre>
-<p>To properly typeset the fractions of <span class="math inline">\(\pi\)</span> we use R’s built-in support for mathematical annotation (<code>?grDevices::plotmath</code>). Since we only need a few annotations, we can hard-code these:</p>
+<p>To properly typeset the fractions of <span class="math inline">\(\pi\)</span> we use R’s built-in support for mathematical annotation (<code>?grDevices::plotmath</code>). Since we only need a few annotations, we can hard-code these.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a></p>
 <pre class="r"><code>coords_pi$pi &lt;- c(
   &quot;0&quot;, &quot;frac(pi, 6)&quot;, &quot;frac(pi, 3)&quot;, &quot;frac(pi, 2)&quot;, 
   &quot;frac(2 * pi, 3)&quot;, &quot;frac(5 * pi, 6)&quot;, &quot;pi&quot;,
-  &quot;frac(7 * pi, 6)&quot;, &quot;frac(4 * pi, 3)&quot;, &quot;frac(2 * pi, 3)&quot;, 
+  &quot;frac(7 * pi, 6)&quot;, &quot;frac(4 * pi, 3)&quot;, &quot;frac(3 * pi, 2)&quot;, 
   &quot;frac(5 * pi, 3)&quot;, &quot;frac(11 * pi, 6)&quot;
 )</code></pre>
 <p>Finally, we use some more <code>plotmath</code> to typeset the coordinates of some of the extact trigonometric constants. This might look a bit fiddly, but we only need to figure out the pattern for the first quadrant, and then just make sure we get the signs right for the other quadrants.</p>
 <pre class="r"><code>coords_pi$trig &lt;- c(
-  &quot;(1*&#39;,&#39;* 0)&quot;,
-  &quot;(frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2))&quot;,
-  &quot;(frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2))&quot;,
-  &quot;(0*&#39;,&#39;* 1)&quot;,
-  &quot;(-frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2))&quot;,
-  &quot;(-frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2))&quot;,
-  &quot;(-1*&#39;,&#39;* 0)&quot;,
-  &quot;(-frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2))&quot;,
-  &quot;(-frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2))&quot;,
-  &quot;(0*&#39;,&#39;* -1)&quot;,
-  &quot;(frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2))&quot;,
-  &quot;(frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2))&quot;
+  &quot;1*&#39;,&#39;* 0&quot;,
+  &quot;frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2)&quot;,
+  &quot;frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2)&quot;,
+  &quot;0*&#39;,&#39;* 1&quot;,
+  &quot;-frac(1, 2) *&#39;,&#39;* ~ frac(sqrt(3), 2)&quot;,
+  &quot;-frac(sqrt(3), 2) *&#39;,&#39;* ~ frac(1,2)&quot;,
+  &quot;-1*&#39;,&#39;* 0&quot;,
+  &quot;-frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2)&quot;,
+  &quot;-frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2)&quot;,
+  &quot;0*&#39;,&#39;* -1&quot;,
+  &quot;frac(1, 2) *&#39;,&#39;* ~ -frac(sqrt(3), 2)&quot;,
+  &quot;frac(sqrt(3), 2) *&#39;,&#39;* ~ -frac(1,2)&quot;
 )</code></pre>
+<p>As pointed out by Rob Creel in a <a href="http://disq.us/p/1l5wlja">comment</a>, we can also use the <code>bgroup</code> expression to make sure that fractions are enclosed by scalable parentheses. To avoid making the already messy hard-coded string even messier, we define a helper function for this.</p>
+<pre class="r"><code>bgroup_ &lt;- function(x) {
+  sprintf(&quot;bgroup(&#39;(&#39;, %s, &#39;)&#39;)&quot;, x)
+}
+
+coords_pi$trig &lt;- bgroup_(coords_pi$trig)</code></pre>
 <p>Since we’re going to plot several layers of <code>geom_label</code> we can use <code>purrr::partial</code> to partially apply all the common arguments that these will take:</p>
 <pre class="r"><code>geom_l &lt;- partial(geom_label, size = 2.5, 
                   label.size = NA, parse = TRUE, 
@@ -83,4 +89,10 @@ qplot(circ$x, circ$y, geom = &quot;path&quot;)</code></pre>
   ylim(-1.2, 1.2) +
   theme_void() +
   coord_equal()</code></pre>
-<p><img src="/post/annotated_unit_circle_files/figure-html/unnamed-chunk-10-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p><img src="/post/annotated_unit_circle_files/figure-html/final-1.png" width="480" style="display: block; margin: auto;" /></p>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Commenter Centerleft spotted <a href="http://disq.us/p/1l68zb5">a typo</a> in an earlier version of this code.<a href="#fnref1">↩</a></p></li>
+</ol>
+</div>
