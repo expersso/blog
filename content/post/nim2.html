@@ -33,7 +33,7 @@ tags:
 <pre class="r"><code>head(intToBits(bitwXor(4, 7)))</code></pre>
 <pre><code>## [1] 01 01 00 00 00 00</code></pre>
 <p>(R gives the binary representation from left to right, so e.g. 4 = 001 here. We’re also wrapping everything in <code>head</code> to avoid printing out a ton of zeros). So the <code>bitwXor</code> first looks at 0 and 1 and evaluates to 1, then 1 and 0 gives 1 again, and finally 1 and 1 gives 0. So <code>bitwXor(4,7)</code> = 110 (in binary) = 3 (in decimal).</p>
-<p>We said earlier that bitwise xor is how you add together two nimbers, so it would be convenient if we could use standard notation and just write <span class="math inline">\(4 + 7 = 3\)</span>. Luckily, R’s beautifully minimalist S3 system is perfectly suited for this. (Btw, <a href="https://twitter.com/thomasmailund">Thomas Mailund’s</a> <a href="http://amzn.to/2vj3mVV">Object-oriented Programming in R</a> is, in my view, the most accessible and comprehensive introduction to S3.)</p>
+<p>We said earlier that bitwise xor is how you add together two nimbers, so it would be convenient if we could use standard notation and just write <span class="math inline">\(4 + 7 = 3\)</span>. Luckily, R’s beautifully minimalist S3 system is perfectly suited for this. (Btw, <a href="https://twitter.com/thomasmailund">Thomas Mailund’s</a> <a href="http://amzn.to/2vj3mVV">Advanced Object-oriented Programming in R</a> is, in my view, the most accessible and comprehensive introduction to S3.)</p>
 <p>(By taking this approach we’re actually severely over-engineering the solution, but it’s a good excuse to play around with S3.)</p>
 <p>We start by defining a constructor function, which simply tags a number as a nimber:</p>
 <pre class="r"><code>nimber &lt;- function(x) {
