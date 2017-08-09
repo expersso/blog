@@ -145,7 +145,7 @@ A %*% A</code></pre>
 ##  $ A^-1 == inv(A)  : logi TRUE
 ##  $ A^-4 == inv(A)^4: logi TRUE</code></pre>
 <p>Indeed, the implementation with <code>reduce</code> also passes our test cases.</p>
-<p>If we stop to consider how this appropach scales with larger inputs of <code>k</code>, however, we notice that we always need to do exactly <code>k</code> matrix multiplications. So the growth rate is linear in <code>k</code>.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> Since matrix multiplication itself is very computationally demanding – between <span class="math inline">\(\mathcal{O}(n^3)\)</span> and <span class="math inline">\(\mathcal{O}(n^{2.373})\)</span> depending on the algorithm – this approach will only work for fairly small matrices and small values of <code>k</code>. Fortunately, there’s a very clever approach that involves diagonalizing <code>A</code> which runs in much better time.</p>
+<p>If we stop to consider how this appropach scales with larger inputs of <code>k</code>, however, we notice that we always need to do exactly <code>k</code> matrix multiplications. So the growth rate is linear in <code>k</code>. Since matrix multiplication itself is very computationally demanding – between <span class="math inline">\(\mathcal{O}(n^3)\)</span> and <span class="math inline">\(\mathcal{O}(n^{2.373})\)</span> depending on the algorithm – this approach will only work for fairly small matrices and small values of <code>k</code>. Fortunately, there’s a very clever approach that involves diagonalizing <code>A</code> which runs in much better time.</p>
 </div>
 <div id="strategy-2-diagonalization" class="section level2">
 <h2>Strategy 2: Diagonalization</h2>
@@ -281,10 +281,4 @@ df_intersect</code></pre>
          &quot; kth power using different approaches&quot;)
        )</code></pre>
 <p><img src="/post/powers_of_matrix_files/figure-html/plot-1.png" width="672" /></p>
-</div>
-<div class="footnotes">
-<hr />
-<ol>
-<li id="fn1"><p>I’m not a computer scientist, though, so I’d be happy to receive input on this if the reader disagrees.<a href="#fnref1">↩</a></p></li>
-</ol>
 </div>

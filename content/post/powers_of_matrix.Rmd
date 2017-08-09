@@ -191,15 +191,12 @@ Indeed, the implementation with `reduce` also passes our test cases.
 
 If we stop to consider how this appropach scales with larger inputs of `k`,
 however, we notice that we always need to do exactly `k` matrix multiplications.
-So the growth rate is linear in `k`.[^1] Since matrix multiplication itself is
-very computationally demanding -- between $\mathcal{O}(n^3)$ and
+So the growth rate is linear in `k`. Since matrix multiplication itself is very
+computationally demanding -- between $\mathcal{O}(n^3)$ and
 $\mathcal{O}(n^{2.373})$ depending on the algorithm -- this approach will only
 work for fairly small matrices and small values of `k`. Fortunately, there's a
 very clever approach that involves diagonalizing `A` which runs in much better
 time.
-
-[^1]: I'm not a computer scientist, though, so I'd be happy to receive input on
-this if the reader disagrees.
 
 ## Strategy 2: Diagonalization  
 
