@@ -1,0 +1,119 @@
+---
+title: Most popular ggplot2 geoms
+author: EP
+date: '2017-08-10'
+categories:
+  - R
+tags:
+  - ggplot2
+---
+
+
+
+<p>In this post we will use the <code>gh</code> package to search Github for uses of the different geoms used in <code>ggplot2</code>.</p>
+<p>We load some necessary packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(scales)
+library(stringr)
+library(gh)</code></pre>
+<p>Next, we find all the functions exported by <code>ggplot2</code>, keep only those of the form <code>geom_*</code>, and put them in a data frame.</p>
+<pre class="r"><code>geoms &lt;- getNamespaceExports(&quot;ggplot2&quot;) %&gt;%
+  keep(str_detect, pattern = &quot;^geom&quot;) %&gt;%
+  data_frame(geom = .)
+
+geoms</code></pre>
+<pre><code>## # A tibble: 44 x 1
+##           geom
+##          &lt;chr&gt;
+##  1   geom_text
+##  2  geom_vline
+##  3    geom_col
+##  4   geom_tile
+##  5     geom_qq
+##  6  geom_label
+##  7   geom_line
+##  8 geom_smooth
+##  9   geom_path
+## 10  geom_spoke
+## # ... with 34 more rows</code></pre>
+<p>Since there are 44 different geoms we will have to make 44 separate calls to the Github API. To avoid running into a rate limit, we thus define a function operator called <code>delay</code>, which takes as input a function <code>f</code> and a number <code>delay</code>, and returns that same function, but now modified so that its call is delayed by <code>delay</code> seconds.</p>
+<pre class="r"><code>delay &lt;- function(f, delay = 3) {
+  function(...) {
+    Sys.sleep(delay)
+    f(...)
+  }
+}</code></pre>
+<p>When web scraping and making API calls it’s often nice to get some real-time feedback on what calls are being made. For this we define a second function operator, <code>w_msg</code>, which modifies a function so that it prints out its first argument whenever it is called.</p>
+<pre class="r"><code>w_msg &lt;- function(f) {
+  function(...) {
+    args &lt;- list(...)
+    message(&quot;Processing: &quot;, args[[1]])
+    f(...)
+  }
+}</code></pre>
+<p>Our workhorse function will be <code>search_gh</code>, which takes a search query parameter <code>q</code>, and then searches Github for that query. (NB: if you want to run this yourself, you should follow the instructions in <code>?gh::gh_whoami</code> for how to handle your Github API token).</p>
+<pre class="r"><code>search_gh &lt;- function(q, ...) {
+  gh(&quot;/search/code&quot;, q = q, ...)
+}</code></pre>
+<p>With all this in place, we simply map our modified <code>search_gh</code> over all 44 geoms, and extract the <code>total_count</code> field.</p>
+<pre class="r"><code>geoms &lt;- geoms %&gt;%
+  mutate(
+    result      = map(geom, w_msg(delay(search_gh))),
+    total_count = map_int(result, &quot;total_count&quot;)
+)</code></pre>
+<pre><code>## Processing: geom_text</code></pre>
+<pre><code>## Processing: geom_vline</code></pre>
+<pre><code>## Processing: geom_col</code></pre>
+<pre><code>## Processing: geom_tile</code></pre>
+<pre><code>## Processing: geom_qq</code></pre>
+<pre><code>## ...</code></pre>
+<pre class="r"><code>geoms</code></pre>
+<pre><code>## # A tibble: 44 x 3
+##           geom            result total_count
+##          &lt;chr&gt;            &lt;list&gt;       &lt;int&gt;
+##  1   geom_text &lt;S3: gh_response&gt;       38912
+##  2  geom_vline &lt;S3: gh_response&gt;       29418
+##  3    geom_col &lt;S3: gh_response&gt;        5088
+##  4   geom_tile &lt;S3: gh_response&gt;       13993
+##  5     geom_qq &lt;S3: gh_response&gt;         482
+##  6  geom_label &lt;S3: gh_response&gt;        7703
+##  7   geom_line &lt;S3: gh_response&gt;      116986
+##  8 geom_smooth &lt;S3: gh_response&gt;       46169
+##  9   geom_path &lt;S3: gh_response&gt;       12378
+## 10  geom_spoke &lt;S3: gh_response&gt;         512
+## # ... with 34 more rows</code></pre>
+<p>Finally, we plot the results.</p>
+<pre class="r"><code>ggplot(geoms, aes(x = total_count,
+                  y = reorder(geom, total_count))) +
+  geom_point(color = &quot;red&quot;) +
+  geom_text(
+    aes(label = str_replace(geom, &quot;geom_(.*)&quot;, &quot;\\1  &quot;)),
+    size = 3,
+    hjust = 1,
+    color = &quot;grey30&quot;
+  ) +
+  scale_y_discrete(expand = c(0.03, 0)) +
+  scale_x_log10(
+    limits = c(100, 1500000),
+    expand = c(0, 0),
+    breaks = 10 ^ c(1:6),
+    labels = format(10 ^ c(1:6),
+                    scientific = FALSE, big.mark = &quot;,&quot;)
+  ) +
+  annotation_logticks(sides = &quot;b&quot;) +
+  theme_minimal() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    plot.margin = unit(rep(5, 4), &quot;mm&quot;)
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = &quot;Make geom_qq Great Again&quot;,
+    subtitle = paste0(&quot;Most popular ggplot2 geoms,&quot;,
+                      &quot; by total count on Github&quot;)
+  )</code></pre>
+<p><img src="/post/popular_geoms_files/figure-html/unnamed-chunk-6-1.png" width="384" style="display: block; margin: auto;" /></p>

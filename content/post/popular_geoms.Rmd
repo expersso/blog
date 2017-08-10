@@ -1,0 +1,126 @@
+---
+title: Most popular ggplot2 geoms
+author: EP
+date: '2017-08-10'
+categories:
+  - R
+tags:
+  - ggplot2
+---
+
+In this post we will use the `gh` package to search Github for uses of the
+different geoms used in `ggplot2`.
+
+We load some necessary packages.
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(scales)
+library(stringr)
+library(gh)
+```
+
+Next, we find all the functions exported by `ggplot2`, keep only those of the
+form `geom_*`, and put them in a data frame.
+
+```{r geom_names}
+geoms <- getNamespaceExports("ggplot2") %>% 
+  keep(str_detect, pattern = "^geom") %>% 
+  data_frame(geom = .)
+
+geoms
+```
+
+Since there are 44 different geoms we will have to make 44 separate calls to the
+Github API. To avoid running into a rate limit, we thus define a function
+operator called `delay`, which takes as input a function `f` and a number
+`delay`, and returns that same function, but now modified so that its call is
+delayed by `delay` seconds.
+
+```{r func_ops}
+delay <- function(f, delay = 3) {
+  function(...) {
+    Sys.sleep(delay)
+    f(...)
+  }
+}
+```
+
+When web scraping and making API calls it's often nice to get some real-time
+feedback on what calls are being made. For this we define a second function
+operator, `w_msg`, which modifies a function so that it prints out its first
+argument whenever it is called.
+
+```{r}
+w_msg <- function(f) {
+  function(...) {
+    args <- list(...)
+    message("Processing: ", args[[1]])
+    f(...)
+  }
+}
+```
+
+Our workhorse function will be `search_gh`, which takes a search query parameter
+`q`, and then searches Github for that query. (NB: if you want to run this
+yourself, you should follow the instructions in `?gh::gh_whoami` for how to
+handle your Github API token).
+
+```{r}
+search_gh <- function(q, ...) {
+  gh("/search/code", q = q, ...)
+}
+```
+
+With all this in place, we simply map our modified `search_gh` over all 44
+geoms, and extract the `total_count` field.
+
+```{r, eval=TRUE, cache=TRUE}
+geoms <- geoms %>% 
+  mutate(
+    result      = map(geom, w_msg(delay(search_gh))),
+    total_count = map_int(result, "total_count")
+)
+```
+
+```{r}
+geoms
+```
+
+Finally, we plot the results.
+
+```{r, fig.width=4, fig.height=6, fig.align='center'}
+ggplot(geoms, aes(x = total_count, 
+                  y = reorder(geom, total_count))) +
+  geom_point(color = "red") +
+  geom_text(
+    aes(label = str_replace(geom, "geom_(.*)", "\\1  ")),
+    size = 3,
+    hjust = 1,
+    color = "grey30"
+  ) +
+  scale_y_discrete(expand = c(0.03, 0)) +
+  scale_x_log10(
+    limits = c(100, 1500000),
+    expand = c(0, 0),
+    breaks = 10 ^ c(1:6),
+    labels = format(10 ^ c(1:6),
+                    scientific = FALSE, big.mark = ",")
+  ) +
+  annotation_logticks(sides = "b") +
+  theme_minimal() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    plot.margin = unit(rep(5, 4), "mm")
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Make geom_qq Great Again",
+    subtitle = paste0("Most popular ggplot2 geoms,", 
+                      " by total count on Github")
+  )
+```

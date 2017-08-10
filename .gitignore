@@ -6,3 +6,5 @@
 blogdown
 public
 Thumbs.db
+/data
+.Renviron
