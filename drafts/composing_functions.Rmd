@@ -1,0 +1,21 @@
+---
+title: Composing functions
+author: EP
+date: '2017-07-30'
+categories:
+  - R
+tags:
+  - functional programming
+  - mathematics
+---
+
+```{r}
+fs <- list(sin, function(x) x^2, cos)
+lift(compose)(fs)(1:5)
+```
+
+```{r}
+`%.%` <- function(f1, f2) function(...) f1(f2(...))
+(fs[[1]] %.% fs[[2]] %.% fs[[3]])(1:5)
+```
+

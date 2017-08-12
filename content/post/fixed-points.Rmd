@@ -1,0 +1,161 @@
+---
+title: Fixed points
+author: EP
+date: "2017-08-12"
+categories: 
+  - R
+tags:
+  - functional programming
+  - mathematics
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+                      fig.height = 3, fig.width = 3, 
+                      fig.align = "center")
+```
+
+```{r}
+library(tidyverse)
+
+float_eq <- function(x, y, tol = 1e-2) {
+  map2_lgl(x, y,  
+            ~isTRUE(all.equal(.x, .y, tolerance = tol))
+  )
+}
+```
+
+```{r}
+fixed_points <- function(f, x, ..., tol = 1e-2) {
+    f_x <- f(x, ...)
+    equal <- float_eq(x, f_x, tol = tol)
+    unique(x[equal])
+}
+
+f <- function(x) x^3
+
+(fp <- fixed_points(f, -10:10))
+
+fp == f(fp)
+```
+
+```{r}
+plot_fixed_point <- function(f, domain) {
+  fp <- data_frame(x = domain, y = f(x)) %>% 
+    filter(float_eq(x, y))
+
+  ggplot(data.frame(x = domain), aes(x)) +
+    geom_hline(yintercept = 0, size = 0.1) +
+    geom_vline(xintercept = 0, size = 0.1) +
+    stat_function(fun = f, color = "blue") +
+    stat_function(fun = function(x) x, color = "red") +
+    geom_point(aes(y = y), data = fp) +
+    geom_text(aes(y = y, label = sprintf("(%0.1f,%0.1f)", x, y)), 
+              data = fp, size = 3, hjust = -0.1, vjust = 2, 
+              check_overlap = TRUE) +
+    coord_equal(ylim = range(domain)) +
+    theme_minimal()
+}
+```
+
+```{r}
+domain <- -10:10
+plot_fixed_point(function(x) x^2, domain)
+```
+
+```{r}
+plot_fixed_point(function(x) x^3, domain)
+```
+
+```{r}
+id <- function(x) x
+plot_fixed_point(id, domain)
+```
+
+```{r}
+const_3 <- function(x) 3
+plot_fixed_point(const_3, domain)
+```
+
+```{r}
+plot_fixed_point(abs, domain)
+```
+
+```{r}
+plot_fixed_point(sign, domain)
+```
+
+```{r}
+g <- function(x) x^4 + 3 * x^3 + x^2
+domain2 <- seq(-4, 2, length.out = 1000)
+plot_fixed_point(g, domain2)
+```
+
+```{r}
+plot_fixed_point(sin, domain)
+```
+
+```{r}
+plot_fixed_point(cos, domain2)
+```
+
+```{r}
+fixed_points(toupper, c(letters, LETTERS))
+```
+
+## Attractive fixed points
+
+[Attractive fixed 
+point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points)
+
+```{r}
+afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
+afp
+```
+
+```{r}
+plot_fixed_point(cos, domain) +
+  geom_point(aes(x = afp, y = afp)) +
+  annotate("text", x = afp, y = afp,
+           label = sprintf("(%0.2f,%0.2f)", afp, afp), 
+           vjust = -1, size = 3)
+```
+
+```{r}
+iter_apply <- function(f, n, .init, ...) {
+  reduce(seq_len(n), ~f(.x, ...), .init = .init)
+}
+
+iter_apply(function(x) x + 2, 3, 0)
+```
+
+```{r}
+iter_apply(cos, 10, -1)
+```
+
+```{r, fig.show="animate"}
+library(gganimate)
+library(animation)
+ani.options("ffmpeg" = "/usr/bin/avconv")
+
+xs <- accumulate(1:10, ~cos(.x), .init = -1) %>% 
+  list(., .) %>% 
+  transpose() %>% 
+  flatten() %>% 
+  flatten_dbl()
+
+df <- data_frame(
+  x     = head(xs, -1), 
+  y     = c(0, tail(xs, -2)),
+  frame = seq_along(x)
+)
+
+p <- plot_fixed_point(cos, domain) +
+  coord_equal(ylim = c(0, 1), xlim = c(-1, 1)) +
+  geom_path(data = df, aes(x, y, frame = frame, 
+                           cumulative = TRUE))
+
+gganimate(p, filename = "test.gif")
+```
