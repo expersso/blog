@@ -2,6 +2,7 @@
 title: Fixed points
 author: EP
 date: "2017-08-12"
+draft: true
 categories: 
   - R
 tags:
@@ -11,15 +12,18 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r, include=FALSE}
+```{r opts, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
                       fig.height = 3, fig.width = 3, 
                       fig.align = "center")
 ```
 
-```{r}
+```{r pkgs}
 library(tidyverse)
+library(gganimate)
+```
 
+```{r float_eq}
 float_eq <- function(x, y, tol = 1e-2) {
   map2_lgl(x, y,  
             ~isTRUE(all.equal(.x, .y, tolerance = tol))
@@ -27,7 +31,7 @@ float_eq <- function(x, y, tol = 1e-2) {
 }
 ```
 
-```{r}
+```{r fixed_points}
 fixed_points <- function(f, x, ..., tol = 1e-2) {
     f_x <- f(x, ...)
     equal <- float_eq(x, f_x, tol = tol)
@@ -41,8 +45,8 @@ f <- function(x) x^3
 fp == f(fp)
 ```
 
-```{r}
-plot_fixed_point <- function(f, domain) {
+```{r plot_fixed_points}
+plot_fixed_points <- function(f, domain) {
   fp <- data_frame(x = domain, y = f(x)) %>% 
     filter(float_eq(x, y))
 
@@ -60,48 +64,48 @@ plot_fixed_point <- function(f, domain) {
 }
 ```
 
-```{r}
+```{r x_squared}
 domain <- -10:10
-plot_fixed_point(function(x) x^2, domain)
+plot_fixed_points(function(x) x^2, domain)
 ```
 
-```{r}
-plot_fixed_point(function(x) x^3, domain)
+```{r x_cubed}
+plot_fixed_points(function(x) x^3, domain)
 ```
 
-```{r}
+```{r id}
 id <- function(x) x
-plot_fixed_point(id, domain)
+plot_fixed_points(id, domain)
 ```
 
-```{r}
+```{r const_3}
 const_3 <- function(x) 3
-plot_fixed_point(const_3, domain)
+plot_fixed_points(const_3, domain)
 ```
 
-```{r}
-plot_fixed_point(abs, domain)
+```{r abs}
+plot_fixed_points(abs, domain)
 ```
 
-```{r}
-plot_fixed_point(sign, domain)
+```{r sign}
+plot_fixed_points(sign, domain)
 ```
 
-```{r}
+```{r complicated_polynomial}
 g <- function(x) x^4 + 3 * x^3 + x^2
 domain2 <- seq(-4, 2, length.out = 1000)
-plot_fixed_point(g, domain2)
+plot_fixed_points(g, domain2)
 ```
 
-```{r}
-plot_fixed_point(sin, domain)
+```{r sin}
+plot_fixed_points(sin, domain)
 ```
 
-```{r}
-plot_fixed_point(cos, domain2)
+```{r cos}
+plot_fixed_points(cos, domain2)
 ```
 
-```{r}
+```{r toupper}
 fixed_points(toupper, c(letters, LETTERS))
 ```
 
@@ -110,36 +114,24 @@ fixed_points(toupper, c(letters, LETTERS))
 [Attractive fixed 
 point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points)
 
-```{r}
+```{r repeated_cos}
 afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
 afp
 ```
 
-```{r}
-plot_fixed_point(cos, domain) +
-  geom_point(aes(x = afp, y = afp)) +
-  annotate("text", x = afp, y = afp,
-           label = sprintf("(%0.2f,%0.2f)", afp, afp), 
-           vjust = -1, size = 3)
-```
-
-```{r}
-iter_apply <- function(f, n, .init, ...) {
+```{r iterate}
+iterate <- function(f, n, .init, ...) {
   reduce(seq_len(n), ~f(.x, ...), .init = .init)
 }
 
-iter_apply(function(x) x + 2, 3, 0)
+iterate(function(x) x + 2, 3, 0)
 ```
 
-```{r}
-iter_apply(cos, 10, -1)
+```{r iapply_cos}
+iterate(cos, 10, -1)
 ```
 
-```{r, fig.show="animate"}
-library(gganimate)
-library(animation)
-ani.options("ffmpeg" = "/usr/bin/avconv")
-
+```{r attactive_fp_cos, eval=FALSE}
 xs <- accumulate(1:10, ~cos(.x), .init = -1) %>% 
   list(., .) %>% 
   transpose() %>% 
@@ -152,10 +144,16 @@ df <- data_frame(
   frame = seq_along(x)
 )
 
-p <- plot_fixed_point(cos, domain) +
+p <- plot_fixed_points(cos, domain) +
   coord_equal(ylim = c(0, 1), xlim = c(-1, 1)) +
   geom_path(data = df, aes(x, y, frame = frame, 
                            cumulative = TRUE))
-
-gganimate(p, filename = "test.gif")
 ```
+
+```{r save_gif, include=FALSE, eval=FALSE}
+gganimate(p, title_frame = FALSE,
+          filename = paste0("../../static/post/fixed-points_files",
+                            "/figure-html/attractive_fp_cos.gif"))
+![](/post/fixed-points_files/figure-html/attractive_fp_cos.gif)
+```
+

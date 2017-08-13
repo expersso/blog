@@ -1,0 +1,102 @@
+---
+title: Linear operators
+author: EP
+date: '2017-08-13'
+categories:
+  - R
+  - mathematics
+tags:
+  - linear algebra
+  - matrix
+output: html_document
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+std_basis <- list(
+  v1 = c(1, 0, 0),
+  v2 = c(0, 1, 0),
+  v3 = c(0, 0, 1)
+)
+```
+
+```{r}
+lop <- function(f) {
+  structure(f, class = c("lop", class(f)))
+}
+```
+
+```{r}
+as.matrix.lop <- function(f, basis = NULL) {
+  if(is.null(basis)) {
+    basis <- std_basis
+  }
+
+  n <- length(basis)
+  vs <- map(basis, f)
+  lift_vl(matrix)(vs, n)
+}
+```
+
+```{r}
+f <- function(u) {
+  stopifnot(length(u) == 3)
+  x <- u[1]
+  y <- u[2]
+  z <- u[3]
+  c(x + y, 2*x + 3*y, z - 3*y)
+}
+f <- lop(f)
+
+F <- as.matrix(f)
+F
+```
+
+```{r}
+w <- c(3, 2, -4)
+f(w)
+F %*% w
+```
+
+```{r}
+g <- function(u) {
+  stopifnot(length(u) == 3)
+  x <- u[1]
+  y <- u[2]
+  z <- u[3]
+  c(x - y, -2*x + 6*y, -2*z + 5*y)
+}
+g <- lop(g)
+
+G <- as.matrix(g)
+G
+```
+
+```{r}
+F %*% G %*% w
+
+f(g(w))
+```
+
+```{r}
+`+.lop` <- function(f, g) {
+  function(...) {
+    f(...) + g(...)
+  }
+}
+```
+
+```{r}
+(f + g)(w)
+f(w) + g(w)
+F + G
+(F + G) %*% w
+```
+
+
+
