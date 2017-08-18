@@ -1,7 +1,7 @@
 ---
 title: Fixed points
 author: EP
-date: "2017-08-12"
+date: "2017-08-14"
 draft: true
 categories: 
   - R
@@ -11,6 +11,18 @@ tags:
 editor_options:
   chunk_output_type: console
 ---
+
+In mathematics, a [fixed point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics))
+of a function is an element that gets mapped to itself by that function. For example, 
+the function 
+
+$$
+f : \mathbb{R} \rightarrow \mathbb{R}
+f(x) = x^2
+$$
+
+maps the elements 0 and 1 to themselves ($f(0) = 0^2 = 0$ and $f
+
 
 ```{r opts, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
@@ -23,18 +35,16 @@ library(tidyverse)
 library(gganimate)
 ```
 
-```{r float_eq}
-float_eq <- function(x, y, tol = 1e-2) {
-  map2_lgl(x, y,  
-            ~isTRUE(all.equal(.x, .y, tolerance = tol))
-  )
+```{r approx_eq}
+approx_eq <- function(x, y, tol = 1e-2) {
+  map2_lgl(x, y, ~isTRUE(all.equal(.x, .y, tolerance = tol)))
 }
 ```
 
 ```{r fixed_points}
 fixed_points <- function(f, x, ..., tol = 1e-2) {
     f_x <- f(x, ...)
-    equal <- float_eq(x, f_x, tol = tol)
+    equal <- approx_eq(x, f_x, tol = tol)
     unique(x[equal])
 }
 
@@ -48,7 +58,7 @@ fp == f(fp)
 ```{r plot_fixed_points}
 plot_fixed_points <- function(f, domain) {
   fp <- data_frame(x = domain, y = f(x)) %>% 
-    filter(float_eq(x, y))
+    filter(approx_eq(x, y))
 
   ggplot(data.frame(x = domain), aes(x)) +
     geom_hline(yintercept = 0, size = 0.1) +
@@ -119,19 +129,7 @@ afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
 afp
 ```
 
-```{r iterate}
-iterate <- function(f, n, .init, ...) {
-  reduce(seq_len(n), ~f(.x, ...), .init = .init)
-}
-
-iterate(function(x) x + 2, 3, 0)
-```
-
-```{r iapply_cos}
-iterate(cos, 10, -1)
-```
-
-```{r attactive_fp_cos, eval=FALSE}
+```{r attactive_fp_cos, eval=TRUE}
 xs <- accumulate(1:10, ~cos(.x), .init = -1) %>% 
   list(., .) %>% 
   transpose() %>% 
@@ -145,15 +143,18 @@ df <- data_frame(
 )
 
 p <- plot_fixed_points(cos, domain) +
-  coord_equal(ylim = c(0, 1), xlim = c(-1, 1)) +
+  coord_equal(ylim = c(-1, 1), xlim = c(-1, 1)) +
   geom_path(data = df, aes(x, y, frame = frame, 
-                           cumulative = TRUE))
+                           cumulative = TRUE),
+            color = "orange")
 ```
 
-```{r save_gif, include=FALSE, eval=FALSE}
-gganimate(p, title_frame = FALSE,
+```{r save_gif, include=FALSE, eval=TRUE}
+gganimate(p, title_frame = FALSE, 
+          ani.width=200, ani.height=200,
+          interval = 0.25,
           filename = paste0("../../static/post/fixed-points_files",
                             "/figure-html/attractive_fp_cos.gif"))
-![](/post/fixed-points_files/figure-html/attractive_fp_cos.gif)
 ```
 
+![](/post/fixed-points_files/figure-html/attractive_fp_cos.gif)
