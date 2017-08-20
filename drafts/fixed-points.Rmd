@@ -26,7 +26,7 @@ maps the elements 0 and 1 to themselves ($f(0) = 0^2 = 0$ and $f
 
 ```{r opts, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
-                      fig.height = 3, fig.width = 3, 
+                      # fig.height = 3, fig.width = 3, 
                       fig.align = "center")
 ```
 
@@ -56,19 +56,19 @@ fp == f(fp)
 ```
 
 ```{r plot_fixed_points}
-plot_fixed_points <- function(f, domain) {
-  fp <- data_frame(x = domain, y = f(x)) %>% 
-    filter(approx_eq(x, y))
-
+plot_fixed_points <- function(f, domain, ...) {
+  fp <- fixed_points(f, domain, ...)
+  
   ggplot(data.frame(x = domain), aes(x)) +
     geom_hline(yintercept = 0, size = 0.1) +
     geom_vline(xintercept = 0, size = 0.1) +
     stat_function(fun = f, color = "blue") +
     stat_function(fun = function(x) x, color = "red") +
-    geom_point(aes(y = y), data = fp) +
-    geom_text(aes(y = y, label = sprintf("(%0.1f,%0.1f)", x, y)), 
-              data = fp, size = 3, hjust = -0.1, vjust = 2, 
-              check_overlap = TRUE) +
+    annotate("point", x = fp, y = fp) +
+    annotate("text", x = fp, y = fp, 
+             label = sprintf("(%0.1f,%0.1f)", fp, fp),
+             size = 3, hjust = -0.1, vjust = 2,
+             check_overlap = TRUE) +
     coord_equal(ylim = range(domain)) +
     theme_minimal()
 }
@@ -113,6 +113,11 @@ plot_fixed_points(sin, domain)
 
 ```{r cos}
 plot_fixed_points(cos, domain2)
+```
+
+```{r x_cubed}
+plot_fixed_points(function(x) x * (1 + sin(x)), 
+                  seq(0, 20, 0.01))
 ```
 
 ```{r toupper}
