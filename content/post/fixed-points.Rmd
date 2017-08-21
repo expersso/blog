@@ -12,23 +12,31 @@ editor_options:
   chunk_output_type: console
 ---
 
-In mathematics, a [fixed point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics))
-of a function is an element that gets mapped to itself by that function. For example, 
-the function 
+```{r opts, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+                      fig.height = 3, fig.width = 3,
+                      fig.align = "center")
+```
+
+In mathematics, a [fixed
+point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)) of a function is
+an element that gets mapped to itself by that function. For example, the
+function
 
 $$
 f : \mathbb{R} \rightarrow \mathbb{R}
+$$
+$$
 f(x) = x^2
 $$
 
-maps the elements 0 and 1 to themselves ($f(0) = 0^2 = 0$ and $f
+maps the elements 0 and 1 to themselves, since $f(0) = 0^2 = 0$ and $f(1) = 1^2
+= 1$.
 
-
-```{r opts, include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
-                      # fig.height = 3, fig.width = 3, 
-                      fig.align = "center")
-```
+To illustrate the concept, we could define a function `fixed_points` which maps
+functions to the set of their fixed points. We start, however, by defining a
+function `approx_eq`, which takes two vectors as input, does a pairwise check of
+equality within a given tolerance, and returns a boolean vector. 
 
 ```{r pkgs}
 library(tidyverse)
@@ -41,6 +49,14 @@ approx_eq <- function(x, y, tol = 1e-2) {
 }
 ```
 
+This roundabout solution is necessary in order to deal with the curious
+non-type-stable nature of `all.equal` which returns either `TRUE` or a character
+string explaining why the two elements are not equal!
+
+With that in place, we now define `fixed_points`, which takes as input a
+function `f` and a domain `x` over which to evaluate `f`. It then returns all
+unique elements `x` that satisfy `approx_eq(x, f(x))`.
+
 ```{r fixed_points}
 fixed_points <- function(f, x, ..., tol = 1e-2) {
     f_x <- f(x, ...)
@@ -51,9 +67,16 @@ fixed_points <- function(f, x, ..., tol = 1e-2) {
 f <- function(x) x^3
 
 (fp <- fixed_points(f, -10:10))
-
 fp == f(fp)
 ```
+
+So we see that the function $f(x) = x^3$ has the fixed points ${-1, 0, 1}$ over
+the interval $-10 \leq x \leq 10$.
+
+For convenience, and to see what's really going on with the fixed points for
+various functions, we can define a function that plots a function and its fixed
+points (`ggplot2` provides the convenient function `stat_function` for plotting
+arbitrary functions).
 
 ```{r plot_fixed_points}
 plot_fixed_points <- function(f, domain, ...) {
@@ -65,7 +88,7 @@ plot_fixed_points <- function(f, domain, ...) {
     stat_function(fun = f, color = "blue") +
     stat_function(fun = function(x) x, color = "red") +
     annotate("point", x = fp, y = fp) +
-    annotate("text", x = fp, y = fp, 
+    annotate("text",  x = fp, y = fp, 
              label = sprintf("(%0.1f,%0.1f)", fp, fp),
              size = 3, hjust = -0.1, vjust = 2,
              check_overlap = TRUE) +
@@ -73,6 +96,8 @@ plot_fixed_points <- function(f, domain, ...) {
     theme_minimal()
 }
 ```
+
+Let's try it out on some common functions:
 
 ```{r x_squared}
 domain <- -10:10
@@ -115,10 +140,18 @@ plot_fixed_points(sin, domain)
 plot_fixed_points(cos, domain2)
 ```
 
-```{r x_cubed}
+```{r complicated}
 plot_fixed_points(function(x) x * (1 + sin(x)), 
                   seq(0, 20, 0.01))
 ```
+
+The key point to notice is that the fixed points are precisely those points
+where the graph of the function intersects the graph of the identity function
+(i.e. the 45° line).
+
+Nothing stops us from applying `fixed_points` to non-numeric arguments. For
+example, we can confirm that the fixed points of `toupper` evaluated on all
+upper- and lower-case letters are exactly all the upper-case letters.
 
 ```{r toupper}
 fixed_points(toupper, c(letters, LETTERS))
@@ -126,15 +159,20 @@ fixed_points(toupper, c(letters, LETTERS))
 
 ## Attractive fixed points
 
-[Attractive fixed 
-point](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points)
+A related concept is that of [attractive fixed
+points](https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points).
+As discussed in the Wikipedia article, if we punch in any number into a
+calculator and then repeatedly evaluate the cosine of that number, we will
+eventually get approximately 0.739085133.
 
 ```{r repeated_cos}
-afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1))))))))))
+afp <- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1)))))))))))))
 afp
 ```
 
-```{r attactive_fp_cos, eval=TRUE}
+We can illustrate this process with a nice animated graph.
+
+```{r attactive_fp_cos, eval=FALSE}
 xs <- accumulate(1:10, ~cos(.x), .init = -1) %>% 
   list(., .) %>% 
   transpose() %>% 
@@ -149,12 +187,12 @@ df <- data_frame(
 
 p <- plot_fixed_points(cos, domain) +
   coord_equal(ylim = c(-1, 1), xlim = c(-1, 1)) +
-  geom_path(data = df, aes(x, y, frame = frame, 
-                           cumulative = TRUE),
+  geom_path(data = df, 
+            aes(x, y, frame = frame, cumulative = TRUE),
             color = "orange")
 ```
 
-```{r save_gif, include=FALSE, eval=TRUE}
+```{r save_gif, include=FALSE, eval=FALSE}
 gganimate(p, title_frame = FALSE, 
           ani.width=200, ani.height=200,
           interval = 0.25,
