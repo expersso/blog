@@ -1,0 +1,122 @@
+---
+title: Fixed points
+author: EP
+date: "2017-08-14"
+draft: true
+categories: 
+  - R
+tags:
+  - functional programming
+  - mathematics
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<p>In mathematics, a <a href="https://en.wikipedia.org/wiki/Fixed_point_(mathematics)">fixed point</a> of a function is an element that gets mapped to itself by that function. For example, the function</p>
+<p><span class="math display">\[
+f : \mathbb{R} \rightarrow \mathbb{R}
+\]</span> <span class="math display">\[
+f(x) = x^2
+\]</span></p>
+<p>maps the elements 0 and 1 to themselves, since <span class="math inline">\(f(0) = 0^2 = 0\)</span> and <span class="math inline">\(f(1) = 1^2 = 1\)</span>.</p>
+<p>To illustrate the concept, we could define a function <code>fixed_points</code> which maps functions to the set of their fixed points. We start, however, by defining a function <code>approx_eq</code>, which takes two vectors as input, does a pairwise check of equality within a given tolerance, and returns a boolean vector.</p>
+<pre class="r"><code>library(tidyverse)
+library(gganimate)</code></pre>
+<pre class="r"><code>approx_eq &lt;- function(x, y, tol = 1e-2) {
+  map2_lgl(x, y, ~isTRUE(all.equal(.x, .y, tolerance = tol)))
+}</code></pre>
+<p>This roundabout solution is necessary in order to deal with the curious non-type-stable nature of <code>all.equal</code> which returns either <code>TRUE</code> or a character string explaining why the two elements are not equal!</p>
+<p>With that in place, we now define <code>fixed_points</code>, which takes as input a function <code>f</code> and a domain <code>x</code> over which to evaluate <code>f</code>. It then returns all unique elements <code>x</code> that satisfy <code>approx_eq(x, f(x))</code>.</p>
+<pre class="r"><code>fixed_points &lt;- function(f, x, ..., tol = 1e-2) {
+    f_x &lt;- f(x, ...)
+    equal &lt;- approx_eq(x, f_x, tol = tol)
+    unique(x[equal])
+}
+
+f &lt;- function(x) x^3
+
+(fp &lt;- fixed_points(f, -10:10))</code></pre>
+<pre><code>## [1] -1  0  1</code></pre>
+<pre class="r"><code>fp == f(fp)</code></pre>
+<pre><code>## [1] TRUE TRUE TRUE</code></pre>
+<p>So we see that the function <span class="math inline">\(f(x) = x^3\)</span> has the fixed points <span class="math inline">\({-1, 0, 1}\)</span> over the interval <span class="math inline">\(-10 \leq x \leq 10\)</span>.</p>
+<p>For convenience, and to see what’s really going on with the fixed points for various functions, we can define a function that plots a function and its fixed points (<code>ggplot2</code> provides the convenient function <code>stat_function</code> for plotting arbitrary functions).</p>
+<pre class="r"><code>plot_fixed_points &lt;- function(f, domain, ...) {
+  fp &lt;- fixed_points(f, domain, ...)
+  
+  ggplot(data.frame(x = domain), aes(x)) +
+    geom_hline(yintercept = 0, size = 0.1) +
+    geom_vline(xintercept = 0, size = 0.1) +
+    stat_function(fun = f, color = &quot;blue&quot;) +
+    stat_function(fun = function(x) x, color = &quot;red&quot;) +
+    annotate(&quot;point&quot;, x = fp, y = fp) +
+    annotate(&quot;text&quot;,  x = fp, y = fp, 
+             label = sprintf(&quot;(%0.1f,%0.1f)&quot;, fp, fp),
+             size = 3, hjust = -0.1, vjust = 2,
+             check_overlap = TRUE) +
+    coord_equal(ylim = range(domain)) +
+    theme_minimal()
+}</code></pre>
+<p>Let’s try it out on some common functions:</p>
+<pre class="r"><code>domain &lt;- -10:10
+plot_fixed_points(function(x) x^2, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/x_squared-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(function(x) x^3, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/x_cubed-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>id &lt;- function(x) x
+plot_fixed_points(id, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/id-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>const_3 &lt;- function(x) 3
+plot_fixed_points(const_3, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/const_3-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(abs, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/abs-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(sign, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/sign-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>g &lt;- function(x) x^4 + 3 * x^3 + x^2
+domain2 &lt;- seq(-4, 2, length.out = 1000)
+plot_fixed_points(g, domain2)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/complicated_polynomial-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(sin, domain)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/sin-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(cos, domain2)</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/cos-1.png" width="288" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot_fixed_points(function(x) x * (1 + sin(x)), 
+                  seq(0, 20, 0.01))</code></pre>
+<p><img src="/post/fixed-points_files/figure-html/complicated-1.png" width="288" style="display: block; margin: auto;" /></p>
+<p>The key point to notice is that the fixed points are precisely those points where the graph of the function intersects the graph of the identity function (i.e. the 45° line).</p>
+<p>Nothing stops us from applying <code>fixed_points</code> to non-numeric arguments. For example, we can confirm that the fixed points of <code>toupper</code> evaluated on all upper- and lower-case letters are exactly all the upper-case letters.</p>
+<pre class="r"><code>fixed_points(toupper, c(letters, LETTERS))</code></pre>
+<pre><code>##  [1] &quot;A&quot; &quot;B&quot; &quot;C&quot; &quot;D&quot; &quot;E&quot; &quot;F&quot; &quot;G&quot; &quot;H&quot; &quot;I&quot; &quot;J&quot; &quot;K&quot; &quot;L&quot; &quot;M&quot; &quot;N&quot; &quot;O&quot; &quot;P&quot; &quot;Q&quot;
+## [18] &quot;R&quot; &quot;S&quot; &quot;T&quot; &quot;U&quot; &quot;V&quot; &quot;W&quot; &quot;X&quot; &quot;Y&quot; &quot;Z&quot;</code></pre>
+<div id="attractive-fixed-points" class="section level2">
+<h2>Attractive fixed points</h2>
+<p>A related concept is that of <a href="https://en.wikipedia.org/wiki/Fixed_point_(mathematics)#Attractive_fixed_points">attractive fixed points</a>. As discussed in the Wikipedia article, if we punch in any number into a calculator and then repeatedly evaluate the cosine of that number, we will eventually get approximately 0.739085133.</p>
+<pre class="r"><code>afp &lt;- cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(cos(-1)))))))))))))
+afp</code></pre>
+<pre><code>## [1] 0.7375069</code></pre>
+<p>We can illustrate this process with a nice animated graph.</p>
+<pre class="r"><code>xs &lt;- accumulate(1:10, ~cos(.x), .init = -1) %&gt;% 
+  list(., .) %&gt;% 
+  transpose() %&gt;% 
+  flatten() %&gt;% 
+  flatten_dbl()
+
+df &lt;- data_frame(
+  x     = head(xs, -1), 
+  y     = c(0, tail(xs, -2)),
+  frame = seq_along(x)
+)
+
+p &lt;- plot_fixed_points(cos, domain) +
+  coord_equal(ylim = c(-1, 1), xlim = c(-1, 1)) +
+  geom_path(data = df, 
+            aes(x, y, frame = frame, cumulative = TRUE),
+            color = &quot;orange&quot;)</code></pre>
+<div class="figure">
+<img src="/post/fixed-points_files/figure-html/attractive_fp_cos.gif" />
+
+</div>
+</div>
