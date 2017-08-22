@@ -1,5 +1,5 @@
 ---
-title: Twitter Waterfall Challenge
+title: Using purrr to refactor imperative code
 author: EP
 date: "2017-08-22"
 draft: true
@@ -13,6 +13,38 @@ editor_options:
 
 
 
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>In a recent <a href="https://www.mango-solutions.com/blog/the-twitter-waterflow-problem">blog post</a>, Nathan Eastwood solved the so-called <a href="http://chrisdone.com/posts/twitter-problem-loeb">Twitter Waterfall Problem</a> using R. In his post, Nathan provides two solutions; one imperative approach using a large for-loop, and one more substantive approach using <code>R6</code>.</p>
+<p>This post uses Nathan’s first solution as a case study of how to refactor imperative code using a more functional approach.</p>
+</div>
+<div id="problem" class="section level2">
+<h2>Problem</h2>
+<p>Consider this picture:</p>
+<div class="figure">
+<img src="https://www.mango-solutions.com/blog/user/pages/01.blog/130.the-twitter-waterflow-problem/image%201.png" />
+
+</div>
+<p>The blocks here represent walls, and we’re imagining what would happen if water were poured onto this structure. All water poured on the sides would run off, while some water would get trapped in the middle. In effect, it would end up looking like this:</p>
+<div class="figure">
+<img src="https://www.mango-solutions.com/blog/user/pages/01.blog/130.the-twitter-waterflow-problem/image2-small.png" />
+
+</div>
+<p>So the problem is: given a set of walls, where would water accumulate?</p>
+</div>
+<div id="imperative-solution" class="section level2">
+<h2>Imperative solution</h2>
+<p>The walls are represented by a simple numerical vector <code>wall</code>. We then iterate over these walls from left to right. As Nathan explains,</p>
+<blockquote>
+<p>The approach I took was one of many ways you could solve this problem. I chose to treat each column (wall) as an index and then for each index I implement a loop:</p>
+<ul>
+<li>Find the height of the current index</li>
+<li>Find the maximum height of the walls to the left of the current index</li>
+<li>Find the maximum height of the walls to the right of the index</li>
+</ul>
+<p>I then work out what the smallest maximum height is between the maximum heights to the left and right of the current index. If this smallest height minus the current index height is greater than zero, then I know how many blocks will fill with water for the current index. Of course, if the smallest maximum height to the left or right is less than the current height, then I get the run off.</p>
+</blockquote>
+<p>Nathan offers the following solution (which I wrapped inside a function):</p>
 <pre class="r"><code>wall &lt;- c(2, 5, 1, 2, 3, 4, 7, 7, 6)
 
 get_water_original &lt;- function(wall) {
@@ -43,46 +75,76 @@ get_water_original &lt;- function(wall) {
 
 get_water_original(wall)</code></pre>
 <pre><code>## [1] 0 0 4 3 2 1 0 0 0</code></pre>
-<pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## Loading tidyverse: ggplot2
-## Loading tidyverse: tibble
-## Loading tidyverse: tidyr
-## Loading tidyverse: readr
-## Loading tidyverse: purrr
-## Loading tidyverse: dplyr</code></pre>
-<pre><code>## Conflicts with tidy packages ----------------------------------------------</code></pre>
-<pre><code>## filter(): dplyr, stats
-## lag():    dplyr, stats</code></pre>
-<pre class="r"><code>library(forcats)
+<p>The function outputs the correct solution, viz. that we would get water columns of height 4 in position 3, height 3 in position 4, and so on.</p>
+</div>
+<div id="functional-solution" class="section level2">
+<h2>Functional solution</h2>
+<p>If we look closely at the <code>for</code>-loop we see that it really consists of three separate parts:</p>
+<ol style="list-style-type: decimal">
+<li>For a given <code>i</code>, find the current height, maximum height to the left, and maximum height to the right.</li>
+<li>For a given set of heights, find the minimum of max heights to the left and the right, and find the difference between that and the current height.</li>
+<li>Machinery for iterating over the <code>wall</code> vector and populating the <code>water</code> vector.</li>
+</ol>
+<p>Having thus identified the relevant parts, we should be able to define/reuse three corresponding functions. We can use <code>purrr::map</code> to take care of all the looping machinery (point 3), so we just need to define functions <code>get_max</code> and <code>get_depth</code>.</p>
+<p>We first load some packages.</p>
+<pre class="r"><code>library(tidyverse)
+library(forcats)
 library(microbenchmark)</code></pre>
-<pre class="r"><code>get_max &lt;- function(x, i) {
-  left  &lt;- x[seq_len(i - 1)]
-  right &lt;- x[(i + 1):length(x)]
+<p>Now, <code>get_max</code> takes a vector <code>wall</code> and an index <code>i</code> as input, and starts by splitting up <code>wall</code> into <code>left</code>, <code>right</code>, and (implicit) <code>mid</code> parts. It then finds the maximum values for each part, and returns a list with the results.</p>
+<pre class="r"><code>get_max &lt;- function(wall, i) {
+  left  &lt;- wall[seq_len(i - 1)]
+  right &lt;- wall[seq(i + 1, length(wall))]
   list(l = max(left, 0, na.rm = TRUE),
-       m = x[i],
+       m = wall[i],
        r = max(right, 0, na.rm = TRUE))
-}</code></pre>
-<pre class="r"><code>get_depth &lt;- function(i, wall) {
-  x &lt;- get_max(wall, i)
-  max(min(x$l, x$r) - x$m, 0)
-}</code></pre>
+}
+
+get_max(wall, 2)</code></pre>
+<pre><code>## $l
+## [1] 2
+## 
+## $m
+## [1] 5
+## 
+## $r
+## [1] 7</code></pre>
+<p>Next, <code>get_depth</code> takes a list of heights <code>h</code> produced by <code>get_max</code> as input and returns either their least difference, or 0.</p>
+<pre class="r"><code>get_depth &lt;- function(h) {
+  max(min(h$l, h$r) - h$m, 0)
+}
+
+get_depth(get_max(wall, 3))</code></pre>
+<pre><code>## [1] 4</code></pre>
+<p>For convenience, we can even compose the two functions with <code>purrr::compose</code> to create a function <code>f</code> which takes as input a <code>wall</code> and an <code>i</code> and returns the depth of water at that position.</p>
+<pre class="r"><code>f &lt;- compose(get_depth, get_max)</code></pre>
+<p>Finally, we let <code>map_dbl</code> take care of the looping/iterating for us.</p>
 <pre class="r"><code>get_water &lt;- function(wall) {
-  map_dbl(seq_along(wall), get_depth, wall = wall)
+  map_dbl(seq_along(wall), f, wall = wall)
 }
 
 get_water(wall)</code></pre>
 <pre><code>## [1] 0 0 4 3 2 1 0 0 0</code></pre>
+</div>
+<div id="comparing-results" class="section level2">
+<h2>Comparing results</h2>
+<p>We can test if the two solutions give identical results by generating a large wall and compare the results.</p>
 <pre class="r"><code>big_wall &lt;- sample(1:1000, 1000, TRUE)
 all(get_water_original(big_wall) == get_water(big_wall))</code></pre>
 <pre><code>## [1] TRUE</code></pre>
+<p>We can also check whether one solution is faster than the other:</p>
 <pre class="r"><code>microbenchmark(get_water(big_wall), get_water_original(big_wall))</code></pre>
 <pre><code>## Unit: milliseconds
-##                          expr       min       lq     mean   median
-##           get_water(big_wall) 12.306394 13.18816 15.00206 13.64221
-##  get_water_original(big_wall)  9.088517 10.04891 10.87530 10.40761
+##                          expr       min        lq     mean   median
+##           get_water(big_wall) 21.717028 22.594827 24.59784 22.97654
+##  get_water_original(big_wall)  9.037533  9.878253 10.20222 10.21047
 ##        uq      max neval
-##  14.23447 56.74885   100
-##  10.85669 50.78287   100</code></pre>
+##  23.28359 65.15109   100
+##  10.54235 11.68632   100</code></pre>
+<p>Unsurprisingly, the functional solution is somewhat slower, largely owing (presumably) to its greater number of function calls.</p>
+</div>
+<div id="plotting-results" class="section level2">
+<h2>Plotting results</h2>
+<p>To plot a solution we first define a function that takes a <code>wall</code> as input, solves the problem, and returns a tidy data frame with all the necessary information for drawing the walls and water columns.</p>
 <pre class="r"><code>df_solution &lt;- function(wall) {
   df &lt;- data_frame(
     x = seq_along(wall),
@@ -92,7 +154,30 @@ all(get_water_original(big_wall) == get_water(big_wall))</code></pre>
   gather(df, key, y, -x)
 }
 
-plot_solution &lt;- function(df) {
+df_solution(wall)</code></pre>
+<pre><code>## # A tibble: 18 x 3
+##        x   key     y
+##    &lt;int&gt; &lt;chr&gt; &lt;dbl&gt;
+##  1     1  wall     2
+##  2     2  wall     5
+##  3     3  wall     1
+##  4     4  wall     2
+##  5     5  wall     3
+##  6     6  wall     4
+##  7     7  wall     7
+##  8     8  wall     7
+##  9     9  wall     6
+## 10     1 water     0
+## 11     2 water     0
+## 12     3 water     4
+## 13     4 water     3
+## 14     5 water     2
+## 15     6 water     1
+## 16     7 water     0
+## 17     8 water     0
+## 18     9 water     0</code></pre>
+<p>We can then pass such a data frame into <code>plot_solution</code> to draw the walls and water.</p>
+<pre class="r"><code>plot_solution &lt;- function(df) {
   ggplot(df, aes(x + 0.5, y, fill = fct_rev(key))) +
     geom_col(position = &quot;stack&quot;, show.legend = FALSE, width = 1) +
     scale_fill_manual(values = c(&quot;steelblue&quot;, &quot;grey&quot;)) +
@@ -104,16 +189,19 @@ plot_solution &lt;- function(df) {
       panel.ontop = TRUE,
       panel.grid.major.x = element_line(colour = &quot;white&quot;, size = 0.1),
       panel.grid.major.y = element_line(colour = &quot;white&quot;, size = 0.1),
-      plot.margin = unit(rep(0, 4), &quot;cm&quot;)
+      plot.margin = unit(rep(0.1, 4), &quot;cm&quot;)
     ) +
     coord_equal()
-}</code></pre>
-<pre class="r"><code>plot_solution(df_solution(wall))</code></pre>
-<p><img src="/post/water_challenge_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+}
+
+plot_solution(df_solution(wall))</code></pre>
+<p><img src="/post/water_challenge_files/figure-html/plot_solution-1.png" width="192" style="display: block; margin: auto;" /></p>
+<p>Finally, we can generate a large number of random walls and plot each solution as a separate facet.</p>
 <pre class="r"><code>walls &lt;- map_dfr(1:25, ~df_solution(sample(1:10, 10, TRUE)), 
                  .id = &quot;draw&quot;)
 
 plot_solution(walls) +
   facet_wrap(~draw) +
   ggtitle(&quot;Twitter Waterfall Challenge&quot;)</code></pre>
-<p><img src="/post/water_challenge_files/figure-html/plots-1.png" width="672" /></p>
+<p><img src="/post/water_challenge_files/figure-html/plots-1.png" width="288" style="display: block; margin: auto;" /></p>
+</div>

@@ -1,5 +1,5 @@
 ---
-title: Twitter Waterfall Challenge
+title: Using purrr to refactor imperative code
 author: EP
 date: "2017-08-22"
 draft: true
@@ -10,6 +10,58 @@ tags:
 editor_options:
   chunk_output_type: console
 ---
+
+```{r opts, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = "center")
+```
+
+## Introduction
+
+In a recent [blog post
+](https://www.mango-solutions.com/blog/the-twitter-waterflow-problem), Nathan
+Eastwood solved the so-called [Twitter Waterfall
+Problem](http://chrisdone.com/posts/twitter-problem-loeb) using R. In his post,
+Nathan provides two solutions; one imperative approach using a large for-loop,
+and one more substantive approach using `R6`.
+
+This post uses Nathan's first solution as a case study of how to refactor
+imperative code using a more functional approach.
+
+## Problem
+
+Consider this picture:
+
+![](https://www.mango-solutions.com/blog/user/pages/01.blog/130.the-twitter-waterflow-problem/image%201.png)
+
+The blocks here represent walls, and we're imagining what would happen if water
+were poured onto this structure. All water poured on the sides would run off,
+while some water would get trapped in the middle. In effect, it would end up
+looking like this:
+
+![](https://www.mango-solutions.com/blog/user/pages/01.blog/130.the-twitter-waterflow-problem/image2-small.png)
+
+So the problem is: given a set of walls, where would water accumulate?
+
+## Imperative solution
+
+The walls are represented by a simple numerical vector `wall`. We then iterate
+over these walls from left to right. As Nathan explains, 
+
+> The approach I took was one of many ways you could solve this problem. I chose
+> to treat each column (wall) as an index and then for each index I implement a
+> loop:
+> 
+> * Find the height of the current index 
+> * Find the maximum height of the walls to the left of the current index 
+> * Find the maximum height of the walls to the right of the index 
+> 
+> I then work out what the smallest maximum height is between the maximum heights
+> to the left and right of the current index. If this smallest height minus the
+> current index height is greater than zero, then I know how many blocks will fill
+> with water for the current index. Of course, if the smallest maximum height to
+> the left or right is less than the current height, then I get the run off.
+
+Nathan offers the following solution (which I wrapped inside a function):
 
 ```{r original}
 wall <- c(2, 5, 1, 2, 3, 4, 7, 7, 6)
@@ -43,47 +95,105 @@ get_water_original <- function(wall) {
 get_water_original(wall)
 ```
 
+The function outputs the correct solution, viz. that we would get water columns
+of height 4 in position 3, height 3 in position 4, and so on.
+
+## Functional solution
+
+If we look closely at the `for`-loop we see that it really consists of three
+separate parts:
+
+1. For a given `i`, find the current height, maximum height to the left, and
+maximum height to the right.
+1. For a given set of heights, find the minimum of max heights to the left and
+the right, and find the difference between that and the current height.
+1. Machinery for iterating over the `wall` vector and populating the `water`
+vector.
+
+Having thus identified the relevant parts, we should be able to define/reuse
+three corresponding functions. We can use `purrr::map` to take care of all the
+looping machinery (point 3), so we just need to define functions `get_max` and
+`get_depth`.
+
+We first load some packages.
+
 ```{r pkgs}
 library(tidyverse)
 library(forcats)
 library(microbenchmark)
 ```
 
+Now, `get_max` takes a vector `wall` and an index `i` as input, and starts by
+splitting up `wall` into `left`, `right`, and (implicit) `mid` parts. It then
+finds the maximum values for each part, and returns a list with the results.
+
 ```{r get_max}
-get_max <- function(x, i) {
-  left  <- x[seq_len(i - 1)]
-  right <- x[(i + 1):length(x)]
+get_max <- function(wall, i) {
+  left  <- wall[seq_len(i - 1)]
+  right <- wall[seq(i + 1, length(wall))]
   list(l = max(left, 0, na.rm = TRUE),
-       m = x[i],
+       m = wall[i],
        r = max(right, 0, na.rm = TRUE))
 }
+
+get_max(wall, 2)
 ```
 
+Next, `get_depth` takes a list of heights `h` produced by `get_max` as input and
+returns either their least difference, or 0.
+
 ```{r get_depth}
-get_depth <- function(i, wall) {
-  x <- get_max(wall, i)
-  max(min(x$l, x$r) - x$m, 0)
+get_depth <- function(h) {
+  max(min(h$l, h$r) - h$m, 0)
 }
+
+get_depth(get_max(wall, 3))
 ```
+
+For convenience, we can even compose the two functions with `purrr::compose` to
+create a function `f` which takes as input a `wall` and an `i` and returns the
+depth of water at that position.
+
+```{r compose}
+f <- compose(get_depth, get_max)
+```
+
+Finally, we let `map_dbl` take care of the looping/iterating for us.
 
 ```{r get_water}
 get_water <- function(wall) {
-  map_dbl(seq_along(wall), get_depth, wall = wall)
+  map_dbl(seq_along(wall), f, wall = wall)
 }
 
 get_water(wall)
 ```
+
+## Comparing results
+
+We can test if the two solutions give identical results by generating a large
+wall and compare the results.
 
 ```{r test_equality}
 big_wall <- sample(1:1000, 1000, TRUE)
 all(get_water_original(big_wall) == get_water(big_wall))
 ```
 
+We can also check whether one solution is faster than the other:
+
 ```{r benchmark}
 microbenchmark(get_water(big_wall), get_water_original(big_wall))
 ```
 
-```{r}
+Unsurprisingly, the functional solution is somewhat slower, largely owing
+(presumably) to its greater number of function calls.
+
+## Plotting results
+
+To plot a solution we first define a function that takes a `wall` as input,
+solves the problem, and returns a tidy data frame with all the necessary
+information for drawing the walls and water columns.
+
+```{r df_solution}
 df_solution <- function(wall) {
   df <- data_frame(
     x = seq_along(wall),
@@ -93,6 +203,13 @@ df_solution <- function(wall) {
   gather(df, key, y, -x)
 }
 
+df_solution(wall)
+```
+
+We can then pass such a data frame into `plot_solution` to draw the walls and
+water.
+
+```{r plot_solution, fig.height=2, fig.width=2}
 plot_solution <- function(df) {
   ggplot(df, aes(x + 0.5, y, fill = fct_rev(key))) +
     geom_col(position = "stack", show.legend = FALSE, width = 1) +
@@ -105,19 +222,20 @@ plot_solution <- function(df) {
       panel.ontop = TRUE,
       panel.grid.major.x = element_line(colour = "white", size = 0.1),
       panel.grid.major.y = element_line(colour = "white", size = 0.1),
-      plot.margin = unit(rep(0, 4), "cm")
+      plot.margin = unit(rep(0.1, 4), "cm")
     ) +
     coord_equal()
 }
-```
 
-```{r}
 plot_solution(df_solution(wall))
 ```
 
-```{r plots}
-walls <- map_dfr(1:25, ~df_solution(sample(1:10, 10, TRUE)), 
-                 .id = "draw")
+Finally, we can generate a large number of random walls and plot each solution
+as a separate facet.
+
+```{r plots, fig.height = 3, fig.width = 3}
+walls <- rerun(25, df_solution(sample(1:10, 10, TRUE))) %>% 
+  bind_rows(.id = "draw")
 
 plot_solution(walls) +
   facet_wrap(~draw) +
