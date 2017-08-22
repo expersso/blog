@@ -1,7 +1,7 @@
 ---
 title: Twitter Waterfall Challenge
 author: EP
-date: "2017-08-15"
+date: "2017-08-22"
 draft: true
 categories: 
   - R

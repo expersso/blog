@@ -1,0 +1,119 @@
+---
+title: Twitter Waterfall Challenge
+author: EP
+date: "2017-08-22"
+draft: true
+categories: 
+  - R
+tags:
+  - functional programming
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<pre class="r"><code>wall &lt;- c(2, 5, 1, 2, 3, 4, 7, 7, 6)
+
+get_water_original &lt;- function(wall) {
+  len &lt;- length(wall)
+  # pre-allocate memory to make the loop more efficient
+  water &lt;- rep(0, len)
+  for (i in seq_along(wall)) {
+    currentHeight &lt;- wall[i]
+    maxLeftHeight &lt;- if (i &gt; 1) {
+      max(wall[1:(i - 1)])
+    } else {
+      0
+    }
+    maxRightHeight &lt;- if (i == len) {
+      0
+    } else {
+      max(wall[(i + 1):len])
+    }
+    smallestMaxHeight &lt;- min(maxLeftHeight, maxRightHeight)
+    water[i] &lt;- if (smallestMaxHeight - currentHeight &gt; 0) {
+      smallestMaxHeight - currentHeight
+    } else {
+      0
+    }
+  }
+  water
+}
+
+get_water_original(wall)</code></pre>
+<pre><code>## [1] 0 0 4 3 2 1 0 0 0</code></pre>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## Loading tidyverse: ggplot2
+## Loading tidyverse: tibble
+## Loading tidyverse: tidyr
+## Loading tidyverse: readr
+## Loading tidyverse: purrr
+## Loading tidyverse: dplyr</code></pre>
+<pre><code>## Conflicts with tidy packages ----------------------------------------------</code></pre>
+<pre><code>## filter(): dplyr, stats
+## lag():    dplyr, stats</code></pre>
+<pre class="r"><code>library(forcats)
+library(microbenchmark)</code></pre>
+<pre class="r"><code>get_max &lt;- function(x, i) {
+  left  &lt;- x[seq_len(i - 1)]
+  right &lt;- x[(i + 1):length(x)]
+  list(l = max(left, 0, na.rm = TRUE),
+       m = x[i],
+       r = max(right, 0, na.rm = TRUE))
+}</code></pre>
+<pre class="r"><code>get_depth &lt;- function(i, wall) {
+  x &lt;- get_max(wall, i)
+  max(min(x$l, x$r) - x$m, 0)
+}</code></pre>
+<pre class="r"><code>get_water &lt;- function(wall) {
+  map_dbl(seq_along(wall), get_depth, wall = wall)
+}
+
+get_water(wall)</code></pre>
+<pre><code>## [1] 0 0 4 3 2 1 0 0 0</code></pre>
+<pre class="r"><code>big_wall &lt;- sample(1:1000, 1000, TRUE)
+all(get_water_original(big_wall) == get_water(big_wall))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>microbenchmark(get_water(big_wall), get_water_original(big_wall))</code></pre>
+<pre><code>## Unit: milliseconds
+##                          expr       min       lq     mean   median
+##           get_water(big_wall) 12.306394 13.18816 15.00206 13.64221
+##  get_water_original(big_wall)  9.088517 10.04891 10.87530 10.40761
+##        uq      max neval
+##  14.23447 56.74885   100
+##  10.85669 50.78287   100</code></pre>
+<pre class="r"><code>df_solution &lt;- function(wall) {
+  df &lt;- data_frame(
+    x = seq_along(wall),
+    wall,
+    water = get_water(wall)
+  )
+  gather(df, key, y, -x)
+}
+
+plot_solution &lt;- function(df) {
+  ggplot(df, aes(x + 0.5, y, fill = fct_rev(key))) +
+    geom_col(position = &quot;stack&quot;, show.legend = FALSE, width = 1) +
+    scale_fill_manual(values = c(&quot;steelblue&quot;, &quot;grey&quot;)) +
+    scale_x_continuous(breaks = seq_along(wall)) +
+    scale_y_continuous(breaks = seq(0, max(wall), 1)) +
+    theme_void() +
+    theme(
+      strip.text = element_blank(),
+      panel.ontop = TRUE,
+      panel.grid.major.x = element_line(colour = &quot;white&quot;, size = 0.1),
+      panel.grid.major.y = element_line(colour = &quot;white&quot;, size = 0.1),
+      plot.margin = unit(rep(0, 4), &quot;cm&quot;)
+    ) +
+    coord_equal()
+}</code></pre>
+<pre class="r"><code>plot_solution(df_solution(wall))</code></pre>
+<p><img src="/post/water_challenge_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<pre class="r"><code>walls &lt;- map_dfr(1:25, ~df_solution(sample(1:10, 10, TRUE)), 
+                 .id = &quot;draw&quot;)
+
+plot_solution(walls) +
+  facet_wrap(~draw) +
+  ggtitle(&quot;Twitter Waterfall Challenge&quot;)</code></pre>
+<p><img src="/post/water_challenge_files/figure-html/plots-1.png" width="672" /></p>
