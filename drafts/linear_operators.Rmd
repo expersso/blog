@@ -1,6 +1,7 @@
 ---
 title: Linear operators
 author: EP
+draft: true
 date: '2017-08-13'
 categories:
   - R
@@ -18,7 +19,7 @@ library(tidyverse)
 ```
 
 ```{r}
-std_basis <- list(
+sb_r3 <- list(
   v1 = c(1, 0, 0),
   v2 = c(0, 1, 0),
   v3 = c(0, 0, 1)
@@ -32,11 +33,7 @@ lop <- function(f) {
 ```
 
 ```{r}
-as.matrix.lop <- function(f, basis = NULL) {
-  if(is.null(basis)) {
-    basis <- std_basis
-  }
-
+as.matrix.lop <- function(f, basis) {
   n <- length(basis)
   vs <- map(basis, f)
   lift_vl(matrix)(vs, n)
@@ -53,7 +50,7 @@ f <- function(u) {
 }
 f <- lop(f)
 
-F <- as.matrix(f)
+F <- as.matrix(f, sb_r3)
 F
 ```
 
@@ -73,7 +70,7 @@ g <- function(u) {
 }
 g <- lop(g)
 
-G <- as.matrix(g)
+G <- as.matrix(g, sb_r3)
 G
 ```
 
@@ -98,5 +95,93 @@ F + G
 (F + G) %*% w
 ```
 
+```{r}
+as.lop <- function(M) {
+  f <- function(u) {
+    M %*% u
+  }
+  lop(f)
+}
+```
 
+```{r}
+as.lop(F)(w)
+```
+
+```{r}
+sb_r2 <- list(
+  c(1, 0), 
+  c(0, 1)
+  )
+```
+
+```{r}
+rot_90 <- function(u) {
+  stopifnot(length(u) == 2)
+  x <- u[1]
+  y <- u[2]
+  th <- pi/2
+  c(x*cos(th) - y*sin(th), 
+    x*sin(th) + y*cos(th))
+}
+rot_90 <- lop(rot_90)
+```
+
+```{r}
+as.matrix(rot_90, sb_r2)
+```
+
+```{r}
+rot <- function(theta) {
+  f <- function(u) {
+    stopifnot(length(u) == 2)
+    x <- u[1]
+    y <- u[2]
+    c(x*cos(theta) - y*sin(theta), 
+      x*sin(theta) + y*cos(theta))
+  }
+  lop(f)
+}
+
+rot_180 <- rot(pi)
+```
+
+```{r}
+arr <- function(xend, yend, x = 0, y = 0, ...) {
+  annotate("segment", x = x, xend = xend, y = y, yend = yend, 
+           arrow = arrow(length = unit(2, "mm"), type = "closed"),
+           ...)
+}
+arr_ <- lift(arr)
+```
+
+
+```{r}
+p <- ggplot() +
+  coord_equal(xlim = c(-2, 2), ylim = c(-2, 2))
+
+w <- c(1.5, 2)
+
+p + 
+  arr_(w, color = "red") +
+  arr_(rot(pi/2)(w), color = "orange") +
+  arr_(rot(pi)(w), color = "blue")
+```
+
+```{r}
+df <- data_frame(
+  th = seq(0, 2*pi, length.out = 100),
+  l = map(th, ~rot(.)(c(1, 0))),
+  x = map_dbl(l, 1),
+  y = map_dbl(l, 2)
+)
+```
+
+```{r}
+ggplot(df, aes(xend = x, yend = y, color = as.factor(runif(100)))) +
+  geom_segment(x = 0, y = 0,
+               arrow = arrow(length = unit(2, "mm"), type = "closed"),
+               show.legend = FALSE) +
+  coord_equal()
+```
 

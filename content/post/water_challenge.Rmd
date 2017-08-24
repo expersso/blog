@@ -2,7 +2,7 @@
 title: Using purrr to refactor imperative code
 author: EP
 date: "2017-08-22"
-draft: true
+draft: false
 categories: 
   - R
 tags:
@@ -112,23 +112,24 @@ vector.
 
 Having thus identified the relevant parts, we should be able to define/reuse
 three corresponding functions. We can use `purrr::map` to take care of all the
-looping machinery (point 3), so we just need to define functions `get_max` and
-`get_depth`.
+looping machinery (point 3), so we just need to define functions `get_heights`
+and `get_depth`.
 
-We first load some packages.
+We first set a seed and load some packages.
 
 ```{r pkgs}
+set.seed(1)
 library(tidyverse)
 library(forcats)
 library(microbenchmark)
 ```
 
-Now, `get_max` takes a vector `wall` and an index `i` as input, and starts by
+Now, `get_heights` takes a vector `wall` and an index `i` as input, and starts by
 splitting up `wall` into `left`, `right`, and (implicit) `mid` parts. It then
 finds the maximum values for each part, and returns a list with the results.
 
-```{r get_max}
-get_max <- function(wall, i) {
+```{r get_heights}
+get_heights <- function(wall, i) {
   left  <- wall[seq_len(i - 1)]
   right <- wall[seq(i + 1, length(wall))]
   list(l = max(left, 0, na.rm = TRUE),
@@ -136,26 +137,29 @@ get_max <- function(wall, i) {
        r = max(right, 0, na.rm = TRUE))
 }
 
-get_max(wall, 2)
+get_heights(wall, 2)
 ```
 
-Next, `get_depth` takes a list of heights `h` produced by `get_max` as input and
-returns either their least difference, or 0.
+Next, `get_depth` takes a list of heights `h` produced by `get_heights` as input
+and returns either their least difference, or 0.
 
 ```{r get_depth}
 get_depth <- function(h) {
   max(min(h$l, h$r) - h$m, 0)
 }
 
-get_depth(get_max(wall, 3))
+get_depth(get_heights(wall, 3))
 ```
 
-For convenience, we can even compose the two functions with `purrr::compose` to
-create a function `f` which takes as input a `wall` and an `i` and returns the
-depth of water at that position.
+Since the co-domain of `get_heights` matches up with the domain of `get_depth`,
+we can now compose the two functions with `purrr::compose` to create a function
+`f` which takes as input a `wall` and an `i` and returns the depth of water at
+that position.
 
 ```{r compose}
-f <- compose(get_depth, get_max)
+# equivalent to
+# f <- function(wall, i) get_depth(get_heights(wall, i))
+f <- compose(get_depth, get_heights)
 ```
 
 Finally, we let `map_dbl` take care of the looping/iterating for us.
@@ -167,6 +171,14 @@ get_water <- function(wall) {
 
 get_water(wall)
 ```
+
+In summary, then, we took a large `for`-loop and 
+
+1. split it up into two small, pure, encapsulated functions,
+1. composed together those functions, and
+1. mapped the composite function over the `wall` vector.
+
+This, in my view, is the essence of functional programming.
 
 ## Comparing results
 

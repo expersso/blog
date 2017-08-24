@@ -85,13 +85,14 @@ get_water_original(wall)</code></pre>
 <li>For a given set of heights, find the minimum of max heights to the left and the right, and find the difference between that and the current height.</li>
 <li>Machinery for iterating over the <code>wall</code> vector and populating the <code>water</code> vector.</li>
 </ol>
-<p>Having thus identified the relevant parts, we should be able to define/reuse three corresponding functions. We can use <code>purrr::map</code> to take care of all the looping machinery (point 3), so we just need to define functions <code>get_max</code> and <code>get_depth</code>.</p>
-<p>We first load some packages.</p>
-<pre class="r"><code>library(tidyverse)
+<p>Having thus identified the relevant parts, we should be able to define/reuse three corresponding functions. We can use <code>purrr::map</code> to take care of all the looping machinery (point 3), so we just need to define functions <code>get_heights</code> and <code>get_depth</code>.</p>
+<p>We first set a seed and load some packages.</p>
+<pre class="r"><code>set.seed(1)
+library(tidyverse)
 library(forcats)
 library(microbenchmark)</code></pre>
-<p>Now, <code>get_max</code> takes a vector <code>wall</code> and an index <code>i</code> as input, and starts by splitting up <code>wall</code> into <code>left</code>, <code>right</code>, and (implicit) <code>mid</code> parts. It then finds the maximum values for each part, and returns a list with the results.</p>
-<pre class="r"><code>get_max &lt;- function(wall, i) {
+<p>Now, <code>get_heights</code> takes a vector <code>wall</code> and an index <code>i</code> as input, and starts by splitting up <code>wall</code> into <code>left</code>, <code>right</code>, and (implicit) <code>mid</code> parts. It then finds the maximum values for each part, and returns a list with the results.</p>
+<pre class="r"><code>get_heights &lt;- function(wall, i) {
   left  &lt;- wall[seq_len(i - 1)]
   right &lt;- wall[seq(i + 1, length(wall))]
   list(l = max(left, 0, na.rm = TRUE),
@@ -99,7 +100,7 @@ library(microbenchmark)</code></pre>
        r = max(right, 0, na.rm = TRUE))
 }
 
-get_max(wall, 2)</code></pre>
+get_heights(wall, 2)</code></pre>
 <pre><code>## $l
 ## [1] 2
 ## 
@@ -108,15 +109,17 @@ get_max(wall, 2)</code></pre>
 ## 
 ## $r
 ## [1] 7</code></pre>
-<p>Next, <code>get_depth</code> takes a list of heights <code>h</code> produced by <code>get_max</code> as input and returns either their least difference, or 0.</p>
+<p>Next, <code>get_depth</code> takes a list of heights <code>h</code> produced by <code>get_heights</code> as input and returns either their least difference, or 0.</p>
 <pre class="r"><code>get_depth &lt;- function(h) {
   max(min(h$l, h$r) - h$m, 0)
 }
 
-get_depth(get_max(wall, 3))</code></pre>
+get_depth(get_heights(wall, 3))</code></pre>
 <pre><code>## [1] 4</code></pre>
-<p>For convenience, we can even compose the two functions with <code>purrr::compose</code> to create a function <code>f</code> which takes as input a <code>wall</code> and an <code>i</code> and returns the depth of water at that position.</p>
-<pre class="r"><code>f &lt;- compose(get_depth, get_max)</code></pre>
+<p>Since the co-domain of <code>get_heights</code> matches up with the domain of <code>get_depth</code>, we can now compose the two functions with <code>purrr::compose</code> to create a function <code>f</code> which takes as input a <code>wall</code> and an <code>i</code> and returns the depth of water at that position.</p>
+<pre class="r"><code># equivalent to
+# f &lt;- function(wall, i) get_depth(get_heights(wall, i))
+f &lt;- compose(get_depth, get_heights)</code></pre>
 <p>Finally, we let <code>map_dbl</code> take care of the looping/iterating for us.</p>
 <pre class="r"><code>get_water &lt;- function(wall) {
   map_dbl(seq_along(wall), f, wall = wall)
@@ -124,6 +127,13 @@ get_depth(get_max(wall, 3))</code></pre>
 
 get_water(wall)</code></pre>
 <pre><code>## [1] 0 0 4 3 2 1 0 0 0</code></pre>
+<p>In summary, then, we took a large <code>for</code>-loop and</p>
+<ol style="list-style-type: decimal">
+<li>split it up into two small, pure, encapsulated functions,</li>
+<li>composed together those functions, and</li>
+<li>mapped the composite function over the <code>wall</code> vector.</li>
+</ol>
+<p>This, in my view, is the essence of functional programming.</p>
 </div>
 <div id="comparing-results" class="section level2">
 <h2>Comparing results</h2>
@@ -134,12 +144,12 @@ all(get_water_original(big_wall) == get_water(big_wall))</code></pre>
 <p>We can also check whether one solution is faster than the other:</p>
 <pre class="r"><code>microbenchmark(get_water(big_wall), get_water_original(big_wall))</code></pre>
 <pre><code>## Unit: milliseconds
-##                          expr       min        lq     mean   median
-##           get_water(big_wall) 21.717028 22.594827 24.59784 22.97654
-##  get_water_original(big_wall)  9.037533  9.878253 10.20222 10.21047
-##        uq      max neval
-##  23.28359 65.15109   100
-##  10.54235 11.68632   100</code></pre>
+##                          expr      min       lq     mean   median       uq
+##           get_water(big_wall) 23.41098 24.91282 26.58387 25.28029 25.68997
+##  get_water_original(big_wall) 10.10682 11.16223 11.82585 11.41284 11.70781
+##       max neval
+##  69.58572   100
+##  53.99893   100</code></pre>
 <p>Unsurprisingly, the functional solution is somewhat slower, largely owing (presumably) to its greater number of function calls.</p>
 </div>
 <div id="plotting-results" class="section level2">
@@ -197,8 +207,8 @@ df_solution(wall)</code></pre>
 plot_solution(df_solution(wall))</code></pre>
 <p><img src="/post/water_challenge_files/figure-html/plot_solution-1.png" width="192" style="display: block; margin: auto;" /></p>
 <p>Finally, we can generate a large number of random walls and plot each solution as a separate facet.</p>
-<pre class="r"><code>walls &lt;- map_dfr(1:25, ~df_solution(sample(1:10, 10, TRUE)), 
-                 .id = &quot;draw&quot;)
+<pre class="r"><code>walls &lt;- rerun(25, df_solution(sample(1:10, 10, TRUE))) %&gt;% 
+  bind_rows(.id = &quot;draw&quot;)
 
 plot_solution(walls) +
   facet_wrap(~draw) +
