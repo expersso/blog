@@ -1,8 +1,7 @@
 ---
 title: Using purrr to refactor imperative code
 author: EP
-date: "2017-08-22"
-draft: false
+date: "2017-08-24"
 categories: 
   - R
 tags:

@@ -1,8 +1,7 @@
 ---
 title: Using purrr to refactor imperative code
 author: EP
-date: "2017-08-22"
-draft: true
+date: "2017-08-24"
 categories: 
   - R
 tags:
@@ -145,11 +144,11 @@ all(get_water_original(big_wall) == get_water(big_wall))</code></pre>
 <pre class="r"><code>microbenchmark(get_water(big_wall), get_water_original(big_wall))</code></pre>
 <pre><code>## Unit: milliseconds
 ##                          expr      min       lq     mean   median       uq
-##           get_water(big_wall) 23.41098 24.91282 26.58387 25.28029 25.68997
-##  get_water_original(big_wall) 10.10682 11.16223 11.82585 11.41284 11.70781
+##           get_water(big_wall) 23.61028 25.01164 26.67536 25.36272 25.73384
+##  get_water_original(big_wall) 10.32664 11.28836 11.99218 11.67553 11.84404
 ##       max neval
-##  69.58572   100
-##  53.99893   100</code></pre>
+##  68.60116   100
+##  53.56293   100</code></pre>
 <p>Unsurprisingly, the functional solution is somewhat slower, largely owing (presumably) to its greater number of function calls.</p>
 </div>
 <div id="plotting-results" class="section level2">
