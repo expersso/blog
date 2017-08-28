@@ -2,7 +2,7 @@
 title: Fixed points
 author: EP
 date: "2017-08-21"
-image: "static/post/fixed-points_files/figure-html/attaractive_fp_cos.gif"
+image: "/post/fixed-points_files/figure-html/attaractive_fp_cos.gif"
 categories: 
   - R
 tags:
