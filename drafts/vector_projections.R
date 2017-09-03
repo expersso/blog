@@ -5,8 +5,16 @@ dot <- function(u, v) {
   sum(u * v)
 }
 
-orthogonal <- function(u, v) all.equal(dot(u, v), 0)
+orthogonal <- function(u, v) dot(u, v) == 0
+acute      <- function(u, v) dot(u, v) > 0
+obtuse     <- function(u, v) dot(u, v) < 0
+
 norm <- function(u) sqrt(dot(u, u))
+norm <- function(u, p = 2) {
+  if(is.infinite(p)) return(max(abs(u)))
+  sum(abs(u)^p)^(1/p)
+}
+
 uv <- function(u) u / norm(u)
 
 proj <- function(u, v) {
