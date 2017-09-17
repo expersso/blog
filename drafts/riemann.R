@@ -23,11 +23,13 @@ riemann <- function(f, lower, upper, delta = 1, ...) {
     add_integral_sums(f, ...) %>%
     as_riemann()
 
+  attr(df, "lower") <- lower
+  attr(df, "upper") <- upper
   attr(df, "lower_sum") <- sum(df$low) * delta
   attr(df, "upper_sum") <- sum(df$high) * delta
   attr(df, "delta") <- delta
   attr(df, "n_intervals") <- nrow(df)
-  attr(df, "f") <- f
+  attr(df, "fun") <- f
   df
 }
 
@@ -37,7 +39,7 @@ plot.riemann <- function(df) {
               alpha = 0.5, color = "white", size = 0.1) +
     geom_rect(aes(ymax = low), fill = "red",
               alpha = 0.5, color = "white", size = 0.1) +
-    stat_function(fun = attr(df, "f")) +
+    stat_function(fun = attr(df, "fun")) +
     theme_minimal() +
     labs(y = NULL,
          subtitle = sprintf("Lower sum: %0.1f, Upper sum: %0.1f",
@@ -49,6 +51,15 @@ plot.riemann <- function(df) {
 plot_multiple_deltas <- function(f, lower, upper, deltas, ...) {
   plots <- map(deltas, ~plot(riemann(f, lower, upper, .)))
   lift(grid.arrange)(plots, ...)
+}
+
+summary.riemann <- function(df) {
+  fun_body <- deparse(body(attr(df, "fun")))
+  cat("A Riemann integral of the function", fun_body,
+      "from", attr(df, "lower"),
+      "to", attr(df, "upper"),
+      "with intervals of size", attr(df, "delta"), "."
+  )
 }
 
 f <- function(x) x^2
