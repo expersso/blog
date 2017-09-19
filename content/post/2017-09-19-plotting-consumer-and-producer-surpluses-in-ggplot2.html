@@ -116,10 +116,10 @@ plot_surpluses(demand, supply, domain = c(0, 5))</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/plot_function-1.png" width="336" style="display: block; margin: auto;" /></p>
 <p>In case we want the actual numerical values of the surpluses we use the following formulas:</p>
 <p><span class="math display">\[
-\text{consumer surplus} = \int_{0}^{q^*} D(q) dq - p^*q^*
+\text{consumer surplus} = \int_{0}^{q^*} D(x) dx - p^*q^*
 \]</span></p>
 <p><span class="math display">\[
-\text{producer surplus} = p^*q^* - \int_{0}^{q^*} S(q) dq
+\text{producer surplus} = p^*q^* - \int_{0}^{q^*} S(x) dx.
 \]</span></p>
 <pre class="r"><code>surpluses &lt;- function(demand, supply, domain) {
   q &lt;- uniroot(function(x) demand(x) - supply(x), domain)$root
@@ -136,3 +136,19 @@ surpluses(demand, supply, c(0, 5))</code></pre>
 ## 
 ## $producer
 ## [1] 66.24092</code></pre>
+<p>For kicks, and to double-check, we can also solve the problem by hand. Setting both equations equal to <span class="math inline">\(p^*\)</span> gives us</p>
+<p><span class="math display">\[
+p^* = (q - 10)^2
+\]</span></p>
+<p><span class="math display">\[
+p^* = q^2 + 2q + 8.
+\]</span></p>
+<p>Solving this system for <span class="math inline">\(q\)</span> gives us <span class="math inline">\(q^* = 46/11 \approx 4.18\)</span>. Evaluating the supply (or demand) function at this value gives <span class="math inline">\(p^* = 4.18^2 + 2 \times 4.18 + 8 \approx 33.85\)</span>. Hence, <span class="math inline">\(p^*q^* \approx 4.18 \times 33.85 \approx 141\)</span>. Evaluating the integral in the demand surplus equation gives us</p>
+<p><span class="math display">\[
+\int_{0}^{q*} D(x) dx = \int_{0}^{4.18} (q - 10)^2 dq = \frac{(q - 10)^3}{3} \bigg\rvert_0^{4.18} = \frac{(4.18 - 10)^3}{3} - \frac{-10^3}{3} \approx 267.
+\]</span></p>
+<p>and hence</p>
+<p><span class="math display">\[
+\text{consumer surplus} = \int_{0}^{q^*} D(q) dq - p^*q^* \approx 267 - 141 = 126
+\]</span></p>
+<p>which corresponds precisely with the result given by <code>surpluses</code>. Finding the producer surplus by hand is left to the reader as an exercise.</p>
