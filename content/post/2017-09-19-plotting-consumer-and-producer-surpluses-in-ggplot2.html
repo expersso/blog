@@ -114,3 +114,25 @@ chart</code></pre>
 
 plot_surpluses(demand, supply, domain = c(0, 5))</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/plot_function-1.png" width="336" style="display: block; margin: auto;" /></p>
+<p>In case we want the actual numerical values of the surpluses we use the following formulas:</p>
+<p><span class="math display">\[
+\text{consumer surplus} = \int_{0}^{q^*} D(q) dq - p^*q^*
+\]</span></p>
+<p><span class="math display">\[
+\text{producer surplus} = p^*q^* - \int_{0}^{q^*} S(q) dq
+\]</span></p>
+<pre class="r"><code>surpluses &lt;- function(demand, supply, domain) {
+  q &lt;- uniroot(function(x) demand(x) - supply(x), domain)$root
+  p &lt;- supply(q)
+  consumer_surplus &lt;- integrate(demand, 0, q)$value - p*q
+  producer_surplus &lt;- p*q - integrate(supply, 0, q)$value
+  list(&quot;consumer&quot; = consumer_surplus,
+       &quot;producer&quot; = producer_surplus)
+}
+
+surpluses(demand, supply, c(0, 5))</code></pre>
+<pre><code>## $consumer
+## [1] 126.1227
+## 
+## $producer
+## [1] 66.24092</code></pre>

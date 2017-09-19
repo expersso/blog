@@ -160,3 +160,28 @@ plot_surpluses <- function(demand, supply, domain) {
 
 plot_surpluses(demand, supply, domain = c(0, 5))
 ```
+
+In case we want the actual numerical values of the surpluses we use the
+following formulas:
+
+$$
+\text{consumer surplus} = \int_{0}^{q^*} D(q) dq - p^*q^*
+$$
+
+$$
+\text{producer surplus} = p^*q^* - \int_{0}^{q^*} S(q) dq
+$$
+
+```{r}
+surpluses <- function(demand, supply, domain) {
+  q <- uniroot(function(x) demand(x) - supply(x), domain)$root
+  p <- supply(q)
+  consumer_surplus <- integrate(demand, 0, q)$value - p*q
+  producer_surplus <- p*q - integrate(supply, 0, q)$value
+  list("consumer" = consumer_surplus,
+       "producer" = producer_surplus)
+}
+
+surpluses(demand, supply, c(0, 5))
+```
+
