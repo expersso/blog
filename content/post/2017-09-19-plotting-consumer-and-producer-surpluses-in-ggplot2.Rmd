@@ -1,0 +1,162 @@
+---
+title: Plotting consumer and producer surpluses in ggplot2
+author: EP
+date: '2017-09-19'
+image: "/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/finished_chart-1"
+slug: plotting-consumer-and-producer-surpluses-in-ggplot2
+categories:
+  - R
+  - economics
+tags: []
+---
+
+```{r opts, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+                      fig.height = 3.5, fig.width = 3.5,
+                      fig.align = "center")
+```
+
+[Andrew Heiss](https://twitter.com/andrewheiss) has an interesting [recent 
+post](https://www.andrewheiss.com/blog/2017/09/15/create-supply-and-demand-economics-curves-with-ggplot2/)
+where he uses ggplot2 to plot a nicely annotated supply-demand 
+diagram. In this post we will take a somewhat different approach to solve the
+same problem, with the added feature of filling in the areas representing
+consumer and producer surpluses.
+
+We start by defining supply and demand functions.
+
+```{r demand_supply}
+library(tidyverse)
+
+demand <- function(q) (q - 10)^2
+supply <- function(q) q^2 + 2*q + 8
+```
+
+We plot these over a specified domain using `stat_function`.
+
+```{r basic_chart, fig.width = 5}
+x <- 0:5
+
+chart <- ggplot() +
+  stat_function(aes(x, color = "Demand"), fun = demand) +
+  stat_function(aes(x, color = "Supply"), fun = supply)
+chart
+```
+
+We now need to find the point of intersection, or, in economic terms, the 
+equilibrium price and quantity. We use the `uniroot` function for this and pass 
+it an anonymous function that calculates the difference between the supply and 
+demand. `uniroot` then finds where this difference is zero. This gives us the
+equilibrium quantity $q^*$. Passing this quantity to the supply function then
+gives us the equilibrium price $p^*$.
+
+```{r equilirium_point}
+# Equilibrium quantity
+q <- uniroot(function(x) demand(x) - supply(x), range(x))$root
+
+# Equilibrium price
+p <- supply(q)
+```
+
+We can now annotate the chart with the equilibrium point.
+
+```{r chart_w_equilibrium, fig.width = 5}
+
+chart <- chart + annotate("point", x = q, y = p, color = "grey30")
+chart
+```
+
+Next we add some dashed segments from the equilibrium point to the axes. 
+
+```{r chart_w_dashed_lines, fig.width = 5}
+chart <- chart + 
+  annotate("segment", x = q, xend = q, y = 0, yend = p,
+           linetype = "dashed", color = "grey30") +
+  annotate("segment", x = 0, xend = q, y = p, yend = p,
+           linetype = "dashed", color = "grey30")
+chart
+```
+
+Finally, we want to color the area between the demand curve and the dashed line
+as consumer surplus, and the area below the dashed line but above the supply
+curve as producer surplus. For this we need to pre-calculate a dummy series from
+0 to the equilibrium point, which we pass to the `geom_ribbon` function.
+
+```{r chart_w_ribbon, fig.width = 5}
+z <- seq(0, q, 0.01)
+
+chart <- chart + 
+  geom_ribbon(aes(x = z, ymin = supply(z), ymax = p,
+                  fill = "Producer surplus"), alpha = 0.25) +
+  geom_ribbon(aes(x = z, ymin = p, ymax = demand(z),
+                  fill = "Consumer surplus"), alpha = 0.25)
+chart
+```
+
+As a last touch-up we drop some chart junk and properly annotate the equilibrium
+price and quantity.
+
+```{r finished_chart}
+chart + 
+  scale_x_continuous(expand = c(0, 0), 
+                     breaks = q, labels = "q*") +
+  scale_y_continuous(expand = c(0, 0), 
+                     breaks = p, labels = "p*") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        legend.position = c(1, 1), 
+        legend.justification = c(1, 1),
+        legend.spacing = unit(0, "cm"), 
+        legend.margin = margin(0, 0, 0, 0, "cm")) +
+  labs(x = "Quantity", y = "Price", 
+       color = NULL, fill = NULL)
+```
+
+Indeed, we can now wrap all that code in a function that takes as input a supply
+and a demand function, and returns the corresponding diagram.
+
+```{r plot_function}
+plot_surpluses <- function(demand, supply, domain) {
+  
+  # Equilibrium quantity
+  q <- uniroot(function(x) demand(x) - supply(x), domain)$root
+  
+  # Equilibrium price
+  p <- supply(q)
+  
+  # Domain
+  x <- seq(domain[1], domain[2], 0.1)
+  
+  # Dummy domain for geom_ribbon
+  z <- seq(0, q, 0.01)
+  
+  ggplot() +
+    stat_function(aes(x, color = "Demand"), fun = demand) +
+    stat_function(aes(x, color = "Supply"), fun = supply) +
+    geom_ribbon(aes(x = z, ymin = supply(z), ymax = p,
+                    fill = "Producer surplus"), alpha = 0.25) +
+    geom_ribbon(aes(x = z, ymin = p, ymax = demand(z),
+                    fill = "Consumer surplus"), alpha = 0.25) +
+    annotate("segment", x = q, xend = q,
+             y = 0, yend = p,
+             linetype = "dashed", color = "grey30") +
+    annotate("segment", x = 0, xend = q,
+             y = p, yend = p,
+             linetype = "dashed", color = "grey30") +
+    annotate("point", x = q, y = p, color = "grey30") +
+    scale_x_continuous(expand = c(0, 0), 
+                       breaks = q, labels = "q*") +
+    scale_y_continuous(expand = c(0, 0), 
+                       breaks = p, labels = "p*") +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+          legend.position = c(1, 1), 
+          legend.justification = c(1, 1),
+          legend.spacing = unit(0, "cm"), 
+          legend.margin = margin(0, 0, 0, 0, "cm")) +
+    labs(x = "Quantity", y = "Price", 
+         color = NULL, fill = NULL)
+}
+
+plot_surpluses(demand, supply, domain = c(0, 5))
+```

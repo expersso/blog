@@ -1,0 +1,116 @@
+---
+title: Plotting consumer and producer surpluses in ggplot2
+author: EP
+date: '2017-09-19'
+image: "/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/finished_chart-1"
+slug: plotting-consumer-and-producer-surpluses-in-ggplot2
+categories:
+  - R
+  - economics
+tags: []
+---
+
+
+
+<p><a href="https://twitter.com/andrewheiss">Andrew Heiss</a> has an interesting <a href="https://www.andrewheiss.com/blog/2017/09/15/create-supply-and-demand-economics-curves-with-ggplot2/">recent post</a> where he uses ggplot2 to plot a nicely annotated supply-demand diagram. In this post we will take a somewhat different approach to solve the same problem, with the added feature of filling in the areas representing consumer and producer surpluses.</p>
+<p>We start by defining supply and demand functions.</p>
+<pre class="r"><code>library(tidyverse)
+
+demand &lt;- function(q) (q - 10)^2
+supply &lt;- function(q) q^2 + 2*q + 8</code></pre>
+<p>We plot these over a specified domain using <code>stat_function</code>.</p>
+<pre class="r"><code>x &lt;- 0:5
+
+chart &lt;- ggplot() +
+  stat_function(aes(x, color = &quot;Demand&quot;), fun = demand) +
+  stat_function(aes(x, color = &quot;Supply&quot;), fun = supply)
+chart</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/basic_chart-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>We now need to find the point of intersection, or, in economic terms, the equilibrium price and quantity. We use the <code>uniroot</code> function for this and pass it an anonymous function that calculates the difference between the supply and demand. <code>uniroot</code> then finds where this difference is zero. This gives us the equilibrium quantity <span class="math inline">\(q^*\)</span>. Passing this quantity to the supply function then gives us the equilibrium price <span class="math inline">\(p^*\)</span>.</p>
+<pre class="r"><code># Equilibrium quantity
+q &lt;- uniroot(function(x) demand(x) - supply(x), range(x))$root
+
+# Equilibrium price
+p &lt;- supply(q)</code></pre>
+<p>We can now annotate the chart with the equilibrium point.</p>
+<pre class="r"><code>chart &lt;- chart + annotate(&quot;point&quot;, x = q, y = p, color = &quot;grey30&quot;)
+chart</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/chart_w_equilibrium-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>Next we add some dashed segments from the equilibrium point to the axes.</p>
+<pre class="r"><code>chart &lt;- chart + 
+  annotate(&quot;segment&quot;, x = q, xend = q, y = 0, yend = p,
+           linetype = &quot;dashed&quot;, color = &quot;grey30&quot;) +
+  annotate(&quot;segment&quot;, x = 0, xend = q, y = p, yend = p,
+           linetype = &quot;dashed&quot;, color = &quot;grey30&quot;)
+chart</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/chart_w_dashed_lines-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>Finally, we want to color the area between the demand curve and the dashed line as consumer surplus, and the area below the dashed line but above the supply curve as producer surplus. For this we need to pre-calculate a dummy series from 0 to the equilibrium point, which we pass to the <code>geom_ribbon</code> function.</p>
+<pre class="r"><code>z &lt;- seq(0, q, 0.01)
+
+chart &lt;- chart + 
+  geom_ribbon(aes(x = z, ymin = supply(z), ymax = p,
+                  fill = &quot;Producer surplus&quot;), alpha = 0.25) +
+  geom_ribbon(aes(x = z, ymin = p, ymax = demand(z),
+                  fill = &quot;Consumer surplus&quot;), alpha = 0.25)
+chart</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/chart_w_ribbon-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>As a last touch-up we drop some chart junk and properly annotate the equilibrium price and quantity.</p>
+<pre class="r"><code>chart + 
+  scale_x_continuous(expand = c(0, 0), 
+                     breaks = q, labels = &quot;q*&quot;) +
+  scale_y_continuous(expand = c(0, 0), 
+                     breaks = p, labels = &quot;p*&quot;) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        legend.position = c(1, 1), 
+        legend.justification = c(1, 1),
+        legend.spacing = unit(0, &quot;cm&quot;), 
+        legend.margin = margin(0, 0, 0, 0, &quot;cm&quot;)) +
+  labs(x = &quot;Quantity&quot;, y = &quot;Price&quot;, 
+       color = NULL, fill = NULL)</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/finished_chart-1.png" width="336" style="display: block; margin: auto;" /></p>
+<p>Indeed, we can now wrap all that code in a function that takes as input a supply and a demand function, and returns the corresponding diagram.</p>
+<pre class="r"><code>plot_surpluses &lt;- function(demand, supply, domain) {
+  
+  # Equilibrium quantity
+  q &lt;- uniroot(function(x) demand(x) - supply(x), domain)$root
+  
+  # Equilibrium price
+  p &lt;- supply(q)
+  
+  # Domain
+  x &lt;- seq(domain[1], domain[2], 0.1)
+  
+  # Dummy domain for geom_ribbon
+  z &lt;- seq(0, q, 0.01)
+  
+  ggplot() +
+    stat_function(aes(x, color = &quot;Demand&quot;), fun = demand) +
+    stat_function(aes(x, color = &quot;Supply&quot;), fun = supply) +
+    geom_ribbon(aes(x = z, ymin = supply(z), ymax = p,
+                    fill = &quot;Producer surplus&quot;), alpha = 0.25) +
+    geom_ribbon(aes(x = z, ymin = p, ymax = demand(z),
+                    fill = &quot;Consumer surplus&quot;), alpha = 0.25) +
+    annotate(&quot;segment&quot;, x = q, xend = q,
+             y = 0, yend = p,
+             linetype = &quot;dashed&quot;, color = &quot;grey30&quot;) +
+    annotate(&quot;segment&quot;, x = 0, xend = q,
+             y = p, yend = p,
+             linetype = &quot;dashed&quot;, color = &quot;grey30&quot;) +
+    annotate(&quot;point&quot;, x = q, y = p, color = &quot;grey30&quot;) +
+    scale_x_continuous(expand = c(0, 0), 
+                       breaks = q, labels = &quot;q*&quot;) +
+    scale_y_continuous(expand = c(0, 0), 
+                       breaks = p, labels = &quot;p*&quot;) +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+          legend.position = c(1, 1), 
+          legend.justification = c(1, 1),
+          legend.spacing = unit(0, &quot;cm&quot;), 
+          legend.margin = margin(0, 0, 0, 0, &quot;cm&quot;)) +
+    labs(x = &quot;Quantity&quot;, y = &quot;Price&quot;, 
+         color = NULL, fill = NULL)
+}
+
+plot_surpluses(demand, supply, domain = c(0, 5))</code></pre>
+<p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/plot_function-1.png" width="336" style="display: block; margin: auto;" /></p>
