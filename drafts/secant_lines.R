@@ -21,6 +21,5 @@ cube <- function(x) x^2
 
 ggplot() +
   stat_function(aes(x), fun = cube) +
-  geom_secant(cube, seq(-5, 4, 0.1), seq(-4, 5, 0.1)) +
-  coord_cartesian(ylim = c(-25, 25)) +
-  theme_void()
+  geom_secant(cube, 1, 2) +
+  coord_cartesian(ylim = c(-25, 25))
