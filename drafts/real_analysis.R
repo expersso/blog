@@ -41,7 +41,7 @@ is_lower_bound <- function(s, b) all(s >= b)
 is_maximum <- function(s, b) is_upper_bound(s, b) && b %in% s
 is_minimum <- function(s, b) is_lower_bound(s, b) && b %in% s
 
-converges <- function(s, L, eps = 0.1, min_run = 100) {
+is_limit <- function(s, L, eps = 0.1, min_run = 100) {
   diff <- abs(s - L) < eps
   tail_trues <- tail_while(diff, ~.x)
   n <- length(tail_trues)
