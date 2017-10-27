@@ -57,14 +57,6 @@ ggplot() +
   stat_function(aes(seq(2, 50, 0.01)), fun = g, n = 10000) +
   stat_function(aes(seq(2, 50, 0.01)), fun = neg(g), n = 10000)
 
-neg <- function(f) {
-  function(...) -f(...)
-}
-
-neg <- function(x) UseMethod("neg")
-neg.default <- function(x) .NotYetImplemented()
-neg.numeric <- function(x) -x
-neg.function <- function(f) function(...) -f(...)
 
 shift_horizonally <- function(f, p) {
   function(x, ...) {
@@ -91,21 +83,81 @@ dilate_vertically <- function(f, p) {
 }
 
 make_trans_func <- function(op, inside = TRUE) {
+  force(op); force(inside)
   function(f, p) {
+    force(f); force(p)
     function(x, ...) {
       if(inside) f(op(x, p), ...) else op(f(x, ...), p)
     }
   }
 }
 
-shift_horizonally   <- make_trans_func(`+`)
-dilate_horizontally <- make_trans_func(`*`)
-shift_vertically    <- make_trans_func(`+`, FALSE)
-dilate_vertically   <- make_trans_func(`*`, FALSE)
+shift_h  <- make_trans_func(`+`)
+shift_v  <- make_trans_func(`+`, FALSE)
+dilate_h <- make_trans_func(`*`)
+dilate_v <- make_trans_func(`*`, FALSE)
+flip_h   <- partial(make_trans_func(`*`), p = -1)
+flip_v   <- partial(make_trans_func(`*`, FALSE), p = -1)
 
-g <- function(x) sin(x)
+g <- function(x) x^3
 x <- -10:10
 
-ggplot() +
-  stat_function(aes(x), fun = g) +
-  stat_function(aes(x), fun = dilate_vertically(g, 8), color = "blue")
+df <- data_frame(x = x,
+           cube = g(x),
+           `cube flipped vertically` = flip_v(g)(x),
+           `cube flipped horizontally` = flip_h(g)(x),
+           `cube flipped horizontally & vertically` = flip_v(flip_h(g))(x)
+           ) %>%
+  gather(fun, y, -x)
+
+ggplot(df, aes(x, y)) +
+  geom_line() +
+  facet_wrap(~fun)
+
+is_even <- function(f, x, ...) {
+  isTRUE(all.equal(f(x, ...), flip_h(f)(x, ...)))
+}
+
+is_odd <- function(f, x, ...) {
+  isTRUE(all.equal(f(x, ...), flip_v(flip_h(f))(x, ...)))
+}
+
+is_odd(function(x) x^3, -10:10)
+
+is_even(cos, -10:10)
+is_odd(sin, -10:10)
+
+xprod <- function(...) {
+  vecs <- list(...)
+  m <- do.call(rbind, vecs)
+  map_dbl(seq_len(ncol(m)), ~det(m[, -., drop = FALSE]) * (-1) ^ .)
+}
+
+u <- c(-2, 4, 1)
+v <- c(3, -5, 2)
+
+z <- xprod(u, v)
+
+to_spherical <- function(v, degrees = TRUE) {
+  stopifnot(length(v) == 3)
+  norm <- function(v) sqrt(sum(v^2))
+  rad2deg <- function(x) x * 180 / pi
+
+  proj    <- v[-3]
+  r       <- norm(v)
+  polar   <- asin(norm(proj) / r)
+  azimuth <- atan(v[2] / v[1])
+
+  if(degrees) {
+    polar   <- rad2deg(polar)
+    azimuth <- rad2deg(azimuth)
+  }
+
+  list("r" = r, "polar" = polar, "azimuth" = azimuth)
+}
+
+to_spherical(z)
+
+ggplot(data.frame(x = 1:5)) +
+  geom_jitter(aes(x, y = gamma(x + 1))) +
+  geom_jitter(aes(x, y = factorial(x)))
