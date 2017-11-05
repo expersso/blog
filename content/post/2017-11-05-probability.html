@@ -1,0 +1,129 @@
+---
+title: Probability
+author: EP
+date: '2017-11-05'
+slug: probability
+draft: true
+categories:
+  - R
+  - mathematics
+tags:
+  - mathematics
+  - probability theory
+  - statistics
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+</div>
+<div id="problem" class="section level2">
+<h2>Problem</h2>
+</div>
+<div id="intuitive-solution" class="section level2">
+<h2>Intuitive solution</h2>
+</div>
+<div id="rigorous-solution" class="section level2">
+<h2>Rigorous solution</h2>
+<p><span class="math display">\[
+\begin{align}
+E(X) &amp; = E(I_1 + I_2 + \dots + I_{1000})       &amp;&amp; \text{variable substitution} \\
+     &amp; = E(I_1) + E(I_2) + \dots + E(I_{1000}) &amp;&amp; \text{linearity of expectations} \\
+     &amp; = E(I) + E(I) + \dots + E(I)            &amp;&amp; \text{all } I_i \text{ are i.i.d} \\
+     &amp; = 1000 E(I)                             &amp;&amp; \text{definition of products} \\
+     &amp; = 1000 \sum_{x \in S} I(x) P(I = x)     &amp;&amp; \text{definition of expected value}
+\end{align}
+\]</span></p>
+<p>So if we could just evaluate that last expression – <span class="math inline">\(\sum_{x \in S} I(x) P(I = x)\)</span> – we should be golden.</p>
+<p><span class="math inline">\(I : S \rightarrow \mathbb{R}\)</span></p>
+<p><span class="math display">\[
+\begin{align}
+S &amp; = \{ D, \neg D \} \times \{ C, \neg C \}  \\
+  &amp; = \{ (D, S), (D, \neg S), (\neg D, S), (\neg D, \neg S) \}
+\end{align}
+\]</span></p>
+<p><span class="math display">\[
+\begin{align}
+I(D, \neg S) &amp; = I(\neg D, S) &amp; = 1           &amp;&amp; \text{error} \\
+I(D, S) &amp; = I(\neg D, \neg S) &amp; = 0           &amp;&amp; \text{no error}
+\end{align}
+\]</span></p>
+<p><span class="math display">\[
+\begin{align}
+P(I = 1) &amp; = P( \{ s \in S \mid I(s) = 1 \})               &amp;&amp; \text{definition of random variable equality} \\
+         &amp; = P(\{ (D, \neg S), (\neg D, S) \})             &amp;&amp; \text{evaluating the set comprehension} \\
+         &amp; = P(\{ (D, \neg S) \} \cup \{ (\neg D, S) \})   &amp;&amp; \text{disjoint sets} \\
+         &amp; = P(\{ (D, \neg S) \} ) + P( \{ (\neg D, S) \}) &amp;&amp; \text{additivity of probability of disjoint events} \\
+         &amp; = P(D) P( \neg S) + P( \neg D ) P(S)            &amp;&amp; \text{multiplication rule for independent events} \\
+         &amp; = .01 \times .01 + .99 \times .02               &amp;&amp; \text{by assumption} \\
+         &amp; = .0001 + .0198                                 &amp;&amp; \text{arithmetic} \\
+         &amp; = .0199                                         &amp;&amp; \text{arithmetic}
+\end{align}
+\]</span></p>
+<p>The corresponding calculation for the case <span class="math inline">\(I = 0\)</span> yields:</p>
+<p><span class="math display">\[
+\begin{align}
+P(I = 0) &amp; = .01 \times .99 + .99 \times .98 \\
+         &amp; = .0099 + .9702 \\
+         &amp; = .9801
+\end{align}
+\]</span></p>
+<p>Hence:</p>
+<p><span class="math display">\[
+\begin{align}
+\sum_{x \in S} I(x)P(I = x) &amp; = 1 \times P(I = 1) + 0 \times P(X = 0) \\
+                            &amp; = 1 \times .0199 + 0 \times .9801 \\
+                            &amp; = .0199
+\end{align}
+\]</span></p>
+<p>Continuing on from where we left off earlier:</p>
+<p><span class="math display">\[
+\begin{align}
+E(X) &amp; = 1000 \sum_{x \in S} I(x) P(I = x) \\
+     &amp; = 1000 \times .0199 \\
+     &amp; = 19.9
+\end{align}
+\]</span></p>
+<p>So we’ve arrived at the same answer as we got through our intuitive reasoning earlier.</p>
+</div>
+<div id="r-simulation" class="section level2">
+<h2>R simulation</h2>
+<pre class="r"><code>library(tidyverse)
+
+ind &lt;- function(defective, selected) {
+  defective &amp; !selected | !defective &amp; selected
+}
+
+is_defective &lt;- function(n) {
+  p_def &lt;- 0.01
+  sample(c(TRUE, FALSE), n, TRUE, 
+         prob = c(p_def, 1 - p_def))
+}
+
+is_selected &lt;- function(defective) {
+  p_sel &lt;- if(defective) 0.99 else 0.02
+  sample(c(TRUE, FALSE), 1, 
+         prob = c(p_sel, 1 - p_sel))
+}
+
+is_selected &lt;- Vectorize(is_selected)
+
+x &lt;- rerun(500, {
+  d &lt;- is_defective(1000)
+  s &lt;- is_selected(d)
+  sum(ind(d, s))
+}) %&gt;%
+  flatten_int()
+
+ggplot() +
+  geom_histogram(aes(x), binwidth = 1, 
+                 fill = &quot;cornflowerblue&quot;, 
+                 color = &quot;white&quot;) +
+  geom_vline(xintercept = mean(x)) +
+  annotate(&quot;text&quot;, x = mean(x), y = 85, hjust = -0.1,
+           label = sprintf(&quot;Mean: %0.2f&quot;, mean(x))) +
+  theme_classic() +
+  labs(x = &quot;Number of errors made&quot;)</code></pre>
+<p><img src="/post/2017-11-05-probability_files/figure-html/unnamed-chunk-1-1.png" width="288" /></p>
+</div>

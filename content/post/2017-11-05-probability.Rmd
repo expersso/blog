@@ -1,0 +1,140 @@
+---
+title: Probability
+author: EP
+date: '2017-11-05'
+slug: probability
+draft: true
+categories:
+  - R
+  - mathematics
+tags:
+  - mathematics
+  - probability theory
+  - statistics
+---
+
+## Introduction
+
+## Problem
+
+## Intuitive solution
+
+## Rigorous solution
+
+$$
+\begin{align}
+E(X) & = E(I_1 + I_2 + \dots + I_{1000})       && \text{variable substitution} \\
+     & = E(I_1) + E(I_2) + \dots + E(I_{1000}) && \text{linearity of expectations} \\
+     & = E(I) + E(I) + \dots + E(I)            && \text{all } I_i \text{ are i.i.d} \\
+     & = 1000 E(I)                             && \text{definition of products} \\
+     & = 1000 \sum_{x \in S} I(x) P(I = x)     && \text{definition of expected value}
+\end{align}
+$$
+
+So if we could just evaluate that last expression -- $\sum_{x \in S} I(x) P(I =
+x)$ -- we should be golden.
+
+$I : S \rightarrow \mathbb{R}$
+
+$$
+\begin{align}
+S & = \{ D, \neg D \} \times \{ C, \neg C \}  \\
+  & = \{ (D, S), (D, \neg S), (\neg D, S), (\neg D, \neg S) \}
+\end{align}
+$$
+
+$$
+\begin{align}
+I(D, \neg S) & = I(\neg D, S) & = 1           && \text{error} \\
+I(D, S) & = I(\neg D, \neg S) & = 0           && \text{no error}
+\end{align}
+$$
+
+$$
+\begin{align}
+P(I = 1) & = P( \{ s \in S \mid I(s) = 1 \})               && \text{definition of random variable equality} \\
+         & = P(\{ (D, \neg S), (\neg D, S) \})             && \text{evaluating the set comprehension} \\
+         & = P(\{ (D, \neg S) \} \cup \{ (\neg D, S) \})   && \text{disjoint sets} \\
+         & = P(\{ (D, \neg S) \} ) + P( \{ (\neg D, S) \}) && \text{additivity of probability of disjoint events} \\
+         & = P(D) P( \neg S) + P( \neg D ) P(S)            && \text{multiplication rule for independent events} \\
+         & = .01 \times .01 + .99 \times .02               && \text{by assumption} \\
+         & = .0001 + .0198                                 && \text{arithmetic} \\
+         & = .0199                                         && \text{arithmetic}
+\end{align}
+$$
+
+The corresponding calculation for the case $I = 0$ yields:
+
+$$
+\begin{align}
+P(I = 0) & = .01 \times .99 + .99 \times .98 \\
+         & = .0099 + .9702 \\
+         & = .9801
+\end{align}
+$$
+
+Hence: 
+
+$$
+\begin{align}
+\sum_{x \in S} I(x)P(I = x) & = 1 \times P(I = 1) + 0 \times P(X = 0) \\
+                            & = 1 \times .0199 + 0 \times .9801 \\
+                            & = .0199
+\end{align}
+$$
+
+Continuing on from where we left off earlier:
+
+$$
+\begin{align}
+E(X) & = 1000 \sum_{x \in S} I(x) P(I = x) \\
+     & = 1000 \times .0199 \\
+     & = 19.9
+\end{align}
+$$
+
+So we've arrived at the same answer as we got through our intuitive reasoning
+earlier.
+
+## R simulation
+
+```{r, message=FALSE, fig.width=3, fig.height=3}
+library(tidyverse)
+
+ind <- function(defective, selected) {
+  defective & !selected | !defective & selected
+}
+
+is_defective <- function(n) {
+  p_def <- 0.01
+  sample(c(TRUE, FALSE), n, TRUE, 
+         prob = c(p_def, 1 - p_def))
+}
+
+is_selected <- function(defective) {
+  p_sel <- if(defective) 0.99 else 0.02
+  sample(c(TRUE, FALSE), 1, 
+         prob = c(p_sel, 1 - p_sel))
+}
+
+is_selected <- Vectorize(is_selected)
+
+x <- rerun(500, {
+  d <- is_defective(1000)
+  s <- is_selected(d)
+  sum(ind(d, s))
+}) %>%
+  flatten_int()
+
+ggplot() +
+  geom_histogram(aes(x), binwidth = 1, 
+                 fill = "cornflowerblue", 
+                 color = "white") +
+  geom_vline(xintercept = mean(x)) +
+  annotate("text", x = mean(x), y = 85, hjust = -0.1,
+           label = sprintf("Mean: %0.2f", mean(x))) +
+  theme_classic() +
+  labs(x = "Number of errors made")
+```
+
+
