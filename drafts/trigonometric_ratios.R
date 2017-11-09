@@ -6,8 +6,11 @@ circle <- function(r = 1, x = 0, y = 0) {
          y     = r * sin(theta) + y)
 }
 
+circ <- circle()
+
 secpi <- function(x) 1 / cospi(x)
 cscpi <- function(x) 1 / sinpi(x)
+cotpi <- function(x) 1 / tanpi(x)
 degpi <- function(x) x * 180
 
 get_annotations <- function(theta) {
@@ -31,10 +34,14 @@ get_annotations <- function(theta) {
   )
 }
 
-ann <- get_annotations(1/3)
+x <- seq(0, 2 * pi, 1/32)
+ann <- x %>%
+  map(get_annotations) %>%
+  bind_rows(.id = "id") %>%
+  mutate(id = as.numeric(id))
 
-ggplot(circle(), aes(x, y)) +
-  geom_path(color = "grey70") +
+p <- ggplot(NULL, aes(x, y, frame = id)) +
+  annotate("path", x = circ$x, y = circ$y, color = "grey70") +
   geom_segment(aes(xend = xend, yend = yend, color = color), ann) +
   geom_text(aes(
     x = (x + xend) / 2,
@@ -44,7 +51,27 @@ ggplot(circle(), aes(x, y)) +
     angle = angle,
     vjust = vjust,
     hjust = hjust),
-  data = ann) +
+    data = ann) +
   scale_color_identity() +
   coord_equal(xlim = c(-2, 2), ylim = c(-2, 2)) +
   theme_void()
+
+gganimate(p)
+
+x <- seq(-2, 2, 1/32)
+funs <- c("sinpi", "cospi", "tanpi", "secpi", "cscpi", "cotpi")
+funs_df <- funs %>%
+  map(get) %>%
+  invoke_map(x = x) %>%
+  set_names(funs) %>%
+  as_tibble() %>%
+  mutate(x = x) %>%
+  gather(fun, y, -x)
+
+ggplot(funs_df, aes(x, y)) +
+  geom_hline(yintercept = 0, color = "grey70", size = 0.1) +
+  geom_line(show.legend = FALSE, color = "grey50") +
+  facet_wrap(~fun) +
+  coord_cartesian(ylim = c(-1.5, 1.5)) +
+  theme_classic() +
+  theme(strip.background = element_blank())
