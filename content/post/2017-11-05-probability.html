@@ -1,9 +1,8 @@
 ---
-title: Probability
+title: Trivial probability problem solved intuitively, rigorously, and by simulation
 author: EP
-date: '2017-11-05'
+date: '2017-11-21'
 slug: probability
-draft: true
 categories:
   - R
   - mathematics
@@ -17,44 +16,69 @@ tags:
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
+<p>In this post we will consider a probability problem that is so simple we can find its solution after a moment’s thought. We will then over-engineer that solution in terms of mathematical rigour, and finally show how that mathematical model can be translated in a one-to-one fashion into R code. We will then use that code to simulate the problem and see if it matches our earlier solutions.</p>
 </div>
 <div id="problem" class="section level2">
 <h2>Problem</h2>
+<p>(I found this problem on <a href="https://brilliant.org">Brilliant</a>, which is a fun app and website for doing math problems.)</p>
+<p>Consider a factory producing 1,000 widgets per day. Any given widget has a 1% probability of being defective. After the widget is produced it goes through a quality assessment. A defective widget has a 1% probability of erroneously passing this assessment, while a non-defective widget has a 2% probability of erroneously <em>not</em> passing this assessment.</p>
+<p>On average, how many mistakes does the quality assessment do per day? Assume all widgets are produced and assessed independently of each other.</p>
 </div>
 <div id="intuitive-solution" class="section level2">
 <h2>Intuitive solution</h2>
+<p>The factory produced 1,000 widgets per day. On average 10 of these are defective (1% of 1,000). Of these defective ones, 0.1 slip through the QA (1% of 10). Meanwhile, 990 non-defective ones are produced, and 19.8 (2% of 990) erroneously get caught in the QA. So on average 19.8 + 0.1 = 19.9 mistakes are made per day.</p>
 </div>
 <div id="rigorous-solution" class="section level2">
 <h2>Rigorous solution</h2>
+<p>We can model this problem using indicator variables and linearity of expectations. To tie the problem back to the language often used in probability theory, let’s not think of factories and widgets, but rather of scientists and experiments. So the factory is like a scientist and producing a widget is like conducting an experiment. The outcome of that experiment can be one of four possibilities:</p>
+<ul>
+<li>A defective widget getting caught in QA</li>
+<li>A defective widget not getting caught in QA</li>
+<li>A non-defective widget getting caught in QA</li>
+<li>A non-defective widget not getting caught in QA</li>
+</ul>
+<p>This is our sample space. If we denote defectiveness by <span class="math inline">\(D\)</span> and getting caught in QA by <span class="math inline">\(C\)</span>, then we can write the sample space as the cartesian product of the sets <span class="math inline">\(\{D, \neg D\}\)</span> and <span class="math inline">\(\{C, \neg C\}\)</span>:</p>
+<p><span class="math display">\[
+\begin{align}
+S &amp; = \{ D, \neg D \} \times \{ C, \neg C \}  \\
+  &amp; = \{ (D, C), (D, \neg C), (\neg D, C), (\neg D, \neg C) \}
+\end{align}
+\]</span></p>
+<p>Once we have a sample space, we can define random variables on that space to let us work with numbers instead of sets. In particular, let’s define a random variable <span class="math inline">\(I\)</span> in the following way:</p>
+<p>$$ I S {0,1} \[10pt]</p>
+<span class="math display">\[\begin{align}
+I(D, \neg C) &amp; = I(\neg D, C) &amp; = 1 \\
+I(D, C) &amp; = I(\neg D, \neg C) &amp; = 0
+\end{align}\]</span>
+<p>$$</p>
+<p>That is, <span class="math inline">\(I\)</span> takes as input an outcome of the experiment (e.g. a non-defective widget that gets caught in QA <span class="math inline">\((\neg D, C)\)</span>) and returns either a 1 or a 0. We call this an <em>indicator random variable</em> for the obvious reason: it returns a 1 if a mistake was made, and 0 otherwise.</p>
+<p>We can now define a second random variable <span class="math inline">\(X\)</span> to represent the number of mistakes made in a day. To be really pedantic about its definition, let’s define it in the following way:</p>
+<p>$$ X S^{1000} </p>
+<p>\[10pt]</p>
+<span class="math display">\[\begin{align}
+X(x) = I(x_1) + I(x_2) + \dots + I(x_{1000})
+\end{align}\]</span>
+<p>\[10pt]</p>
+<p> x_n  x. $$</p>
+<p>That is, <span class="math inline">\(X\)</span> takes as input a 1000-tuple of ordered pairs and returns an integer. We get that integer by applying our indicator variable <span class="math inline">\(I\)</span> to each pair and summing up their values. Intuitively, we produce 1000 widgets, check each one if a mistake was made in the QA process, and count the number of mistakes.</p>
+<p>To be less pedantic, we can also just say that <span class="math inline">\(X = I_1 + I_2 + \dots + I_1000\)</span> and not explicitly acknowledge the fact that <span class="math inline">\(X\)</span> is a variable with a domain and codomain.</p>
+<p>Now, the question asks for the average number of mistakes in a day. In our model, this corresponds to the expected value of the random variable <span class="math inline">\(X\)</span>. Hence,</p>
 <p><span class="math display">\[
 \begin{align}
 E(X) &amp; = E(I_1 + I_2 + \dots + I_{1000})       &amp;&amp; \text{variable substitution} \\
      &amp; = E(I_1) + E(I_2) + \dots + E(I_{1000}) &amp;&amp; \text{linearity of expectations} \\
      &amp; = E(I) + E(I) + \dots + E(I)            &amp;&amp; \text{all } I_i \text{ are i.i.d} \\
      &amp; = 1000 E(I)                             &amp;&amp; \text{definition of products} \\
-     &amp; = 1000 \sum_{x \in S} I(x) P(I = x)     &amp;&amp; \text{definition of expected value}
+     &amp; = 1000 \sum_{x \in \{0,1\}} I(x) P(I = x)     &amp;&amp; \text{definition of expected value}
 \end{align}
 \]</span></p>
-<p>So if we could just evaluate that last expression – <span class="math inline">\(\sum_{x \in S} I(x) P(I = x)\)</span> – we should be golden.</p>
-<p><span class="math inline">\(I : S \rightarrow \mathbb{R}\)</span></p>
-<p><span class="math display">\[
-\begin{align}
-S &amp; = \{ D, \neg D \} \times \{ C, \neg C \}  \\
-  &amp; = \{ (D, S), (D, \neg S), (\neg D, S), (\neg D, \neg S) \}
-\end{align}
-\]</span></p>
-<p><span class="math display">\[
-\begin{align}
-I(D, \neg S) &amp; = I(\neg D, S) &amp; = 1           &amp;&amp; \text{error} \\
-I(D, S) &amp; = I(\neg D, \neg S) &amp; = 0           &amp;&amp; \text{no error}
-\end{align}
-\]</span></p>
+<p>So if we could just evaluate that last expression – <span class="math inline">\(\sum_{x \in \{0,1\}} I(x) P(I = x)\)</span> – we’re done. Evaluating the <span class="math inline">\(P(I = x)\)</span> part gives us:</p>
 <p><span class="math display">\[
 \begin{align}
 P(I = 1) &amp; = P( \{ s \in S \mid I(s) = 1 \})               &amp;&amp; \text{definition of random variable equality} \\
          &amp; = P(\{ (D, \neg S), (\neg D, S) \})             &amp;&amp; \text{evaluating the set comprehension} \\
          &amp; = P(\{ (D, \neg S) \} \cup \{ (\neg D, S) \})   &amp;&amp; \text{disjoint sets} \\
-         &amp; = P(\{ (D, \neg S) \} ) + P( \{ (\neg D, S) \}) &amp;&amp; \text{additivity of probability of disjoint events} \\
+         &amp; = P(\{ (D, \neg S) \} ) + P( \{ (\neg D, S) \}) &amp;&amp; \sigma \text{ additivity} \\
          &amp; = P(D) P( \neg S) + P( \neg D ) P(S)            &amp;&amp; \text{multiplication rule for independent events} \\
          &amp; = .01 \times .01 + .99 \times .02               &amp;&amp; \text{by assumption} \\
          &amp; = .0001 + .0198                                 &amp;&amp; \text{arithmetic} \\
@@ -72,7 +96,7 @@ P(I = 0) &amp; = .01 \times .99 + .99 \times .98 \\
 <p>Hence:</p>
 <p><span class="math display">\[
 \begin{align}
-\sum_{x \in S} I(x)P(I = x) &amp; = 1 \times P(I = 1) + 0 \times P(X = 0) \\
+\sum_{x \in \{0,1\}} I(x)P(I = x) &amp; = 1 \times P(I = 1) + 0 \times P(X = 0) \\
                             &amp; = 1 \times .0199 + 0 \times .9801 \\
                             &amp; = .0199
 \end{align}
@@ -85,38 +109,54 @@ E(X) &amp; = 1000 \sum_{x \in S} I(x) P(I = x) \\
      &amp; = 19.9
 \end{align}
 \]</span></p>
-<p>So we’ve arrived at the same answer as we got through our intuitive reasoning earlier.</p>
+<p>And so we’ve arrived at the same answer as we got through our intuitive reasoning earlier.</p>
 </div>
 <div id="r-simulation" class="section level2">
 <h2>R simulation</h2>
-<pre class="r"><code>library(tidyverse)
-
-ind &lt;- function(defective, selected) {
+<p>As a final check on our answer, let’s simulate the problem in R, paying specific attention to making the code mirror the mathematics as closely as possible.</p>
+<p>We define our indicator variable <span class="math inline">\(I\)</span>:</p>
+<pre class="r"><code>I &lt;- function(defective, selected) {
   defective &amp; !selected | !defective &amp; selected
-}
-
-is_defective &lt;- function(n) {
-  p_def &lt;- 0.01
-  sample(c(TRUE, FALSE), n, TRUE, 
+}</code></pre>
+<p>Again, it takes as input a tuple representing a widget and returns either 0 or 1 (technically it returns a boolean (TRUE/FALSE), but we will coerce this to integers later on).</p>
+<p>Next, we set up our sample space <span class="math inline">\(S\)</span>:</p>
+<pre class="r"><code>is_defective &lt;- function(n, p_def = 0.01) {
+  sample(c(TRUE, FALSE), size = n, replace = TRUE, 
          prob = c(p_def, 1 - p_def))
 }
 
-is_selected &lt;- function(defective) {
-  p_sel &lt;- if(defective) 0.99 else 0.02
-  sample(c(TRUE, FALSE), 1, 
+is_selected &lt;- function(defective, ps = c(0.99, 0.02)) {
+  p_sel &lt;- if(defective) ps[1] else ps[2]
+  sample(c(TRUE, FALSE), size = 1, 
          prob = c(p_sel, 1 - p_sel))
 }
 
-is_selected &lt;- Vectorize(is_selected)
+is_selected &lt;- Vectorize(is_selected, vectorize.args = &quot;defective&quot;)
 
-x &lt;- rerun(500, {
-  d &lt;- is_defective(1000)
-  s &lt;- is_selected(d)
-  sum(ind(d, s))
-}) %&gt;%
-  flatten_int()
+set.seed(1)
+is_selected(is_defective(10))</code></pre>
+<pre><code>##  [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE</code></pre>
+<p><code>is_defective</code> allows us to produce <code>n</code> widgets, each with a <code>p_def</code> probability of being defective. We can then pass these to <code>is_selected</code> to simulate QA mistakes being made.</p>
+<p>Lastly, let’s also define our random variable <span class="math inline">\(X\)</span>:</p>
+<pre class="r"><code>X &lt;- function(n, p_def = 0.01, ps = c(0.99, 0.02)) {
+  d &lt;- is_defective(n, p_def)
+  s &lt;- is_selected(d, ps)
+  Is &lt;- I(d, s)
+  sum(Is)
+}
 
-ggplot() +
+X(1000)</code></pre>
+<pre><code>## [1] 15</code></pre>
+<p>We can now let our factory run for a 1,000 days, producing 1,000 widgets each day.</p>
+<pre class="r"><code>library(ggplot2)
+
+x &lt;- replicate(1000, X(1000))
+summary(x)</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##    7.00   17.00   20.00   19.65   23.00   35.00</code></pre>
+<p>Indeed, we get a simulated mean very close to our previous results of <span class="math inline">\(E(X) = 19.9\)</span>.</p>
+<p>Finally, let’s plot all simulations:</p>
+<pre class="r"><code>ggplot() +
   geom_histogram(aes(x), binwidth = 1, 
                  fill = &quot;cornflowerblue&quot;, 
                  color = &quot;white&quot;) +
@@ -125,5 +165,5 @@ ggplot() +
            label = sprintf(&quot;Mean: %0.2f&quot;, mean(x))) +
   theme_classic() +
   labs(x = &quot;Number of errors made&quot;)</code></pre>
-<p><img src="/post/2017-11-05-probability_files/figure-html/unnamed-chunk-1-1.png" width="288" /></p>
+<p><img src="/post/2017-11-05-probability_files/figure-html/plot-1.png" width="288" /></p>
 </div>
