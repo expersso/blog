@@ -72,7 +72,8 @@ variable $I$ in the following way:
 
 $$
 I \colon S \to \{0,1\} \\[10pt]
-
+$$
+$$
 \begin{align}
 I(D, \neg C) & = I(\neg D, C) & = 1 \\
 I(D, C) & = I(\neg D, \neg C) & = 0
@@ -90,15 +91,9 @@ it in the following way:
 
 $$
 X \colon S^{1000} \to \mathbb{Z} 
-
 \\[10pt]
-
-\begin{align}
 X(x) = I(x_1) + I(x_2) + \dots + I(x_{1000})
-\end{align}
-
 \\[10pt]
-
 \text{where } x_n \text{ is the nth ordered pair of the 1000-tuple } x.
 $$
 
@@ -204,10 +199,10 @@ is_selected <- function(defective, ps = c(0.99, 0.02)) {
          prob = c(p_sel, 1 - p_sel))
 }
 
-is_selected <- Vectorize(is_selected, vectorize.args = "defective")
+is_selected <- Vectorize(is_selected, "defective")
 
 set.seed(1)
-is_selected(is_defective(10))
+is_selected(is_defective(8))
 ```
 
 `is_defective` allows us to produce `n` widgets, each with a `p_def` probability

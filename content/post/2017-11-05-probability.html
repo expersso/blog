@@ -45,21 +45,23 @@ S &amp; = \{ D, \neg D \} \times \{ C, \neg C \}  \\
 \end{align}
 \]</span></p>
 <p>Once we have a sample space, we can define random variables on that space to let us work with numbers instead of sets. In particular, let’s define a random variable <span class="math inline">\(I\)</span> in the following way:</p>
-<p>$$ I S {0,1} \[10pt]</p>
-<span class="math display">\[\begin{align}
+<p><span class="math display">\[
+I \colon S \to \{0,1\} \\[10pt]
+\]</span> <span class="math display">\[
+\begin{align}
 I(D, \neg C) &amp; = I(\neg D, C) &amp; = 1 \\
 I(D, C) &amp; = I(\neg D, \neg C) &amp; = 0
-\end{align}\]</span>
-<p>$$</p>
+\end{align}
+\]</span></p>
 <p>That is, <span class="math inline">\(I\)</span> takes as input an outcome of the experiment (e.g. a non-defective widget that gets caught in QA <span class="math inline">\((\neg D, C)\)</span>) and returns either a 1 or a 0. We call this an <em>indicator random variable</em> for the obvious reason: it returns a 1 if a mistake was made, and 0 otherwise.</p>
 <p>We can now define a second random variable <span class="math inline">\(X\)</span> to represent the number of mistakes made in a day. To be really pedantic about its definition, let’s define it in the following way:</p>
-<p>$$ X S^{1000} </p>
-<p>\[10pt]</p>
-<span class="math display">\[\begin{align}
+<p><span class="math display">\[
+X \colon S^{1000} \to \mathbb{Z} 
+\\[10pt]
 X(x) = I(x_1) + I(x_2) + \dots + I(x_{1000})
-\end{align}\]</span>
-<p>\[10pt]</p>
-<p> x_n  x. $$</p>
+\\[10pt]
+\text{where } x_n \text{ is the nth ordered pair of the 1000-tuple } x.
+\]</span></p>
 <p>That is, <span class="math inline">\(X\)</span> takes as input a 1000-tuple of ordered pairs and returns an integer. We get that integer by applying our indicator variable <span class="math inline">\(I\)</span> to each pair and summing up their values. Intuitively, we produce 1000 widgets, check each one if a mistake was made in the QA process, and count the number of mistakes.</p>
 <p>To be less pedantic, we can also just say that <span class="math inline">\(X = I_1 + I_2 + \dots + I_1000\)</span> and not explicitly acknowledge the fact that <span class="math inline">\(X\)</span> is a variable with a domain and codomain.</p>
 <p>Now, the question asks for the average number of mistakes in a day. In our model, this corresponds to the expected value of the random variable <span class="math inline">\(X\)</span>. Hence,</p>
@@ -131,11 +133,11 @@ is_selected &lt;- function(defective, ps = c(0.99, 0.02)) {
          prob = c(p_sel, 1 - p_sel))
 }
 
-is_selected &lt;- Vectorize(is_selected, vectorize.args = &quot;defective&quot;)
+is_selected &lt;- Vectorize(is_selected, &quot;defective&quot;)
 
 set.seed(1)
-is_selected(is_defective(10))</code></pre>
-<pre><code>##  [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE</code></pre>
+is_selected(is_defective(8))</code></pre>
+<pre><code>## [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE</code></pre>
 <p><code>is_defective</code> allows us to produce <code>n</code> widgets, each with a <code>p_def</code> probability of being defective. We can then pass these to <code>is_selected</code> to simulate QA mistakes being made.</p>
 <p>Lastly, let’s also define our random variable <span class="math inline">\(X\)</span>:</p>
 <pre class="r"><code>X &lt;- function(n, p_def = 0.01, ps = c(0.99, 0.02)) {
@@ -153,7 +155,7 @@ X(1000)</code></pre>
 x &lt;- replicate(1000, X(1000))
 summary(x)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##    7.00   17.00   20.00   19.65   23.00   35.00</code></pre>
+##    7.00   17.00   20.00   19.64   23.00   35.00</code></pre>
 <p>Indeed, we get a simulated mean very close to our previous results of <span class="math inline">\(E(X) = 19.9\)</span>.</p>
 <p>Finally, let’s plot all simulations:</p>
 <pre class="r"><code>ggplot() +
