@@ -63,7 +63,7 @@ X(x) = I(x_1) + I(x_2) + \dots + I(x_{1000})
 \text{where } x_n \text{ is the nth ordered pair of the 1000-tuple } x.
 \]</span></p>
 <p>That is, <span class="math inline">\(X\)</span> takes as input a 1000-tuple of ordered pairs and returns an integer. We get that integer by applying our indicator variable <span class="math inline">\(I\)</span> to each pair and summing up their values. Intuitively, we produce 1000 widgets, check each one if a mistake was made in the QA process, and count the number of mistakes.</p>
-<p>To be less pedantic, we can also just say that <span class="math inline">\(X = I_1 + I_2 + \dots + I_1000\)</span> and not explicitly acknowledge the fact that <span class="math inline">\(X\)</span> is a variable with a domain and codomain.</p>
+<p>To be less pedantic, we can also just say that <span class="math inline">\(X = I_1 + I_2 + \dots + I_{1000}\)</span> and not explicitly acknowledge the fact that <span class="math inline">\(X\)</span> is a variable with a domain and codomain.</p>
 <p>Now, the question asks for the average number of mistakes in a day. In our model, this corresponds to the expected value of the random variable <span class="math inline">\(X\)</span>. Hence,</p>
 <p><span class="math display">\[
 \begin{align}

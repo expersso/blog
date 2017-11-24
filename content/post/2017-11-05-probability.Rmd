@@ -102,9 +102,9 @@ integer. We get that integer by applying our indicator variable $I$ to each pair
 and summing up their values. Intuitively, we produce 1000 widgets, check each
 one if a mistake was made in the QA process, and count the number of mistakes.
 
-To be less pedantic, we can also just say that $X = I_1 + I_2 + \dots + I_1000$
-and not explicitly acknowledge the fact that $X$ is a variable with a domain and
-codomain.
+To be less pedantic, we can also just say that $X = I_1 + I_2 + \dots +
+I_{1000}$ and not explicitly acknowledge the fact that $X$ is a variable with a
+domain and codomain.
 
 Now, the question asks for the average number of mistakes in a day. In our
 model, this corresponds to the expected value of the random variable $X$. Hence,
