@@ -1,0 +1,68 @@
+---
+title: "Using a multivariate normal to draw a flower in ggplot2"
+author: "EP"
+date: "2017-11-24"
+categories: 
+  - R
+tags:
+  - ggplot2
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<p>Here’s a dumb thing I did over lunch; as I was playing around with the <code>geom_density_2d</code> and random draws from the standard multivariate normal distribution, I realized that the outcome looked a bit like the flower of a rose. So I figured I would try to see how difficult it would be to draw the full rose using <code>ggplot2</code>. So here goes.</p>
+<pre class="r"><code>knitr::opts_chunk$set(dev = &quot;svg&quot;)</code></pre>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<p>We start with the stem. We’ll just draw this as a curved line, so <code>geom_curve</code> suits our purposes perfectly.</p>
+<pre class="r"><code>p &lt;- ggplot() + 
+  coord_equal(1, c(-4, 2), c(-7, 3)) +
+  geom_curve(aes(x = -1, y = -7, xend = 0, yend = 0), 
+             ncp = 1000, curvature = -0.3, size = 1, 
+             color = &quot;olivedrab3&quot;)
+p</code></pre>
+<p><img src="/post/rose_files/figure-html/stem-1.svg" width="672" /></p>
+<p>Next, we want to draw two leaves on the stem. Since we want to fill these in with a color, we’ll have to use <code>geom_polygon</code>. The solution I came up with is very awkward, and wouldn’t really generalize to drawing many different types of leaves, but it’s good enough for what we’re trying to achieve. (A better approach might use the <code>bezier</code> package.)</p>
+<pre class="r"><code>geom_leaf &lt;- function(x, xend, f, xoffset = 0, yoffset = 0, 
+                      xflip = 1, yflip = 1, ...) {
+  
+  .x &lt;- seq(x, xend, length.out = 100)
+  .y &lt;- f(.x)
+  
+  df &lt;- tibble(x = c(.x, .y), y = c(.y, .x))
+  df$x &lt;- xflip * df$x + xoffset
+  df$y &lt;- yflip * df$y + yoffset
+  
+  geom_polygon(aes(x = x, y = y), data = df, ...)
+}</code></pre>
+<p>The primary inputs are start- and end-points on the x-axis, and a function <code>f</code> to be evaluated over that domain. Together with some parameters for moving and flipping around the leaves, it then evaluates the function and returns a <code>geom_polygon</code> representing the flower. Here it is in action:</p>
+<pre class="r"><code>f &lt;- function(x) x^2 / 2
+
+p &lt;- p +
+  geom_leaf(0, 2, f, -1.6, -4.5, 1, 
+            fill = &quot;olivedrab3&quot;, color = &quot;palegreen&quot;) +
+  geom_leaf(0, 2, f, -1.6, -5,  -1, 
+            fill = &quot;olivedrab3&quot;, color = &quot;palegreen&quot;)
+p</code></pre>
+<p><img src="/post/rose_files/figure-html/leaf-1.svg" width="672" /></p>
+<p>Finally, we create the flower by drawing <code>n</code> samples from a standard multivariate normal distribution and passing these to <code>stat_density_2d</code>.</p>
+<pre class="r"><code>geom_rose &lt;- function(n, mean = c(0, 0), ...) {
+  
+  .x &lt;- mvtnorm::rmvnorm(n, mean)
+  df &lt;- tibble(x = .x[, 1], y = .x[, 2])
+  
+  list(
+    stat_density_2d(
+      aes(x = x, y = y, fill = calc(level)), data = df, 
+      geom = &quot;polygon&quot;, show.legend = FALSE, color = &quot;grey80&quot;),
+    scale_fill_gradient2(...)
+  )
+}</code></pre>
+<p>Adding <code>theme_void</code> gives us the final result.</p>
+<pre class="r"><code>p +
+  geom_rose(1000, mean = c(0, 0), 
+            low = &quot;red&quot;, mid = &quot;purple&quot;, high = &quot;pink&quot;,
+            midpoint = 0.075) +
+  theme_void()</code></pre>
+<p><img src="/post/rose_files/figure-html/rose-1.svg" width="672" /></p>
