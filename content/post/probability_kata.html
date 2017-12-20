@@ -1,0 +1,101 @@
+---
+title: Probability kata
+author: EP
+date: '2017-12-20'
+categories:
+  - R
+  - mathematics
+tags:
+  - probability
+  - monet carlo
+output: html_document
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+<div id="introduction" class="section level3">
+<h3>Introduction</h3>
+<p>While having dinner with a colleague last night, my colleague told me that he’d played a dice game with a risk-loving opponent (who also apparently made a lot of money on the Bitcoin bubble). My colleague said that they had each rolled a six-sided die ten times, and that his friend had (correctly!) bet that he would roll higher on all ten rolls. This seemed implausible to me, but exactly how implausible?</p>
+<p>In the following we solve the problem exactly, and then confirm our calculations through simulation.</p>
+</div>
+<div id="problem" class="section level3">
+<h3>Problem</h3>
+<p>Two players each roll a six-sided, fair die ten times in a row. What is the probability that Player 1 rolls higher than Player 2 all ten times?</p>
+</div>
+<div id="analytical-solution" class="section level3">
+<h3>Analytical solution</h3>
+<p>Let <span class="math inline">\(\Omega = \{ (x,y) \mid x,y \in \{1, \dots, 6\}\}\)</span> be the sample space, so that <span class="math inline">\(|\Omega| = 36\)</span>. Let <span class="math inline">\(X_1, X_2 \sim \mathcal{U}(1,6)\)</span> be two random variables representing the rolls of Player 1 and 2 respectively. Let <span class="math inline">\(I\)</span> be an indicator random variable representing the event that Player 1 wins a roll, i.e. <span class="math inline">\(P(I) = P(X_1 &gt; X_2)\)</span>.</p>
+<p>The probability of winning a given roll is straightforward: if Player 1 e.g. rolls a 6, then he wins if and only if <span class="math inline">\(X_2 \in \{1,2,3,4,5\}\)</span>. By the naive definition of probability, then,</p>
+<p><span class="math display">\[
+P(I | X_1 = 6) = \frac{|\{1,2,3,4,5\}|}{|\Omega|} = \frac{5}{36} \approx 0.14.
+\]</span></p>
+<p>Since the possible events are disjoint, the Law of Total Probability gives us</p>
+<span class="math display">\[\begin{align}
+P(I) &amp; = P(I | X_1 = 6) + P(I | X_1 = 5) + \dots + P(I | X_1 = 1) \\
+     &amp; = \frac{|\{1,2,3,4,5\}|}{|\Omega|} + \dots + \frac{|\{1\}|}{|\Omega|} + \frac{\emptyset}{|\Omega|} \\
+     &amp; = \frac{5}{36} + \dots + \frac{1}{36} + \frac{0}{36} \\
+     &amp; = \frac{(5)(6)}{(36)(2)} \\
+     &amp; = \frac{15}{36} \\
+     &amp; = \frac{5}{12} \\
+     &amp; \approx 0.42,
+\end{align}\]</span>
+<p>where we used the fact that <span class="math inline">\(\sum_{i = 1}^n i = \frac{n(n + 1)}{2}\)</span> in the fourth equality.</p>
+<p>So Player 1 has a 42% chance of winning a given roll.</p>
+<p>Now, since all rolls are independent and identically distributed, we can interpret each roll as a Bernoulli trial with <span class="math inline">\(p = \frac{5}{12}\)</span>. Consequently, if we let <span class="math inline">\(W\)</span> be a random variable representing the total number of rolls won, see that <span class="math inline">\(W\)</span> is just the sum of <span class="math inline">\(n = 10\)</span> i.i.d. <span class="math inline">\(Bern(p)\)</span> trials, i.e. <span class="math inline">\(W \sim Binom(10, \frac{5}{12})\)</span>. By the definition of the Binomial distribution,</p>
+<p><span class="math display">\[
+P(W = k) = {n \choose k} p^k(1 - p)^{n-k},
+\]</span></p>
+<p>we thus have</p>
+<span class="math display">\[\begin{align}
+P(W = 10) &amp; = {10 \choose 10} (\frac{5}{12})^{10}(1 - \frac{5}{12})^0 \\
+          &amp; = (\frac{5}{12})^{10} \\
+          &amp; \approx 0.0001577203.
+\end{align}\]</span>
+<p>So the probability of Player 1 winning all ten rolls is about 0.015%.</p>
+</div>
+<div id="verifying-analytical-solution-through-simulation" class="section level3">
+<h3>Verifying analytical solution through simulation</h3>
+<p>To make sure we made no mistakes in reasoning or arithmetic in the previous section, we will verify our calculations with a simple Monte Carlo simulation.</p>
+<p>We define a function <code>roll_dice</code> which samples with replacement twice from a uniform distribution, <span class="math inline">\(\mathcal{U}(1,6)\)</span>. It then checks if the first sample is greater than the second and replicates this process <code>n</code> times.</p>
+<pre class="r"><code>library(tidyverse)
+library(scales)
+library(ecbutils)
+
+roll_dice &lt;- function(n = 10) {
+  replicate(n, {
+  roll &lt;- sample(x = 1:6, size = 2, replace = TRUE)
+  roll[1] &gt; roll[2]
+})
+}</code></pre>
+<p>Next, we specify that we’ll run the experiment a million times (<code>n_simulations</code>), and calculate the share of experiments where Player 1 indeed wins all ten rolls.</p>
+<pre class="r"><code>n_simulations &lt;- 1e6
+
+wins &lt;- replicate(n_simulations, sum(roll_dice()))
+table(wins)</code></pre>
+<pre><code>## wins
+##      0      1      2      3      4      5      6      7      8      9 
+##   4432  32973 104644 199544 249365 213785 127425  51612  13911   2156 
+##     10 
+##    153</code></pre>
+<pre class="r"><code>cat(&quot;\n&quot;, &quot;Share of simulations where Player 1 won all ten games:&quot;, 
+    sum(wins == 10) / n_simulations)</code></pre>
+<pre><code>## 
+##  Share of simulations where Player 1 won all ten games: 0.000153</code></pre>
+<p>Evidently, the simulation results match our earlier calculations to at least five decimal points, so we’re convinced no mistakes were made.</p>
+<p>Finally, to confirm that we get the correct results not just for <span class="math inline">\(k = 10\)</span> but for all <span class="math inline">\(k \in \{0, \dots, 10 \}\)</span>, we can plot the distribution of the number of simulated rolls won by Player 1 and compare this to the probability mass function of the <span class="math inline">\(Binom(10, \frac{5}{12})\)</span> distribution.</p>
+<pre class="r"><code>df_binom &lt;- data_frame(wins = 0:10, 
+                       y = dbinom(wins, 10, 15/36) * n_simulations)
+
+ggplot(data_frame(wins), aes(x = wins)) +
+  geom_histogram(binwidth = 1, color = &quot;white&quot;, 
+                 fill = &quot;steelblue&quot;, alpha = 0.5) +
+  geom_line(aes(y = y), df_binom, color = &quot;red&quot;) +
+  geom_point(aes(y = y), df_binom, size = 3, color = &quot;red&quot;, alpha = 0.5) +
+  scale_x_continuous(breaks = pretty_breaks(10), expand = c(0, 0)) +
+  scale_y_continuous(breaks = pretty_breaks(10), labels = comma) +
+  theme_ecb() +
+  labs(x = &quot;\nNumber of rolls won by Player 1&quot;)</code></pre>
+<p><img src="/post/probability_kata_files/figure-html/plot-1.png" width="672" /></p>
+</div>
