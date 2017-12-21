@@ -100,7 +100,6 @@ greater than the second and replicates this process `n` times.
 ```{r roll_dice}
 library(tidyverse)
 library(scales)
-library(ecbutils)
 
 roll_dice <- function(n = 10) {
   replicate(n, {
@@ -143,6 +142,6 @@ ggplot(data_frame(wins), aes(x = wins)) +
   geom_point(aes(y = y), df_binom, size = 3, color = "red", alpha = 0.5) +
   scale_x_continuous(breaks = pretty_breaks(10), expand = c(0, 0)) +
   scale_y_continuous(breaks = pretty_breaks(10), labels = comma) +
-  theme_ecb() +
+  theme_light() +
   labs(x = "\nNumber of rolls won by Player 1")
 ```

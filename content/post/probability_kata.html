@@ -61,7 +61,6 @@ P(W = 10) &amp; = {10 \choose 10} (\frac{5}{12})^{10}(1 - \frac{5}{12})^0 \\
 <p>We define a function <code>roll_dice</code> which samples with replacement twice from a uniform distribution, <span class="math inline">\(\mathcal{U}(1,6)\)</span>. It then checks if the first sample is greater than the second and replicates this process <code>n</code> times.</p>
 <pre class="r"><code>library(tidyverse)
 library(scales)
-library(ecbutils)
 
 roll_dice &lt;- function(n = 10) {
   replicate(n, {
@@ -95,7 +94,7 @@ ggplot(data_frame(wins), aes(x = wins)) +
   geom_point(aes(y = y), df_binom, size = 3, color = &quot;red&quot;, alpha = 0.5) +
   scale_x_continuous(breaks = pretty_breaks(10), expand = c(0, 0)) +
   scale_y_continuous(breaks = pretty_breaks(10), labels = comma) +
-  theme_ecb() +
+  theme_light() +
   labs(x = &quot;\nNumber of rolls won by Player 1&quot;)</code></pre>
 <p><img src="/post/probability_kata_files/figure-html/plot-1.png" width="672" /></p>
 </div>
