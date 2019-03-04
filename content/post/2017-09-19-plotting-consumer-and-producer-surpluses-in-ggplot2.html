@@ -12,7 +12,12 @@ tags: []
 
 
 
-<p><a href="https://twitter.com/andrewheiss">Andrew Heiss</a> has an interesting <a href="https://www.andrewheiss.com/blog/2017/09/15/create-supply-and-demand-economics-curves-with-ggplot2/">recent post</a> where he uses ggplot2 to plot a nicely annotated supply-demand diagram. In this post we will take a somewhat different approach to solve the same problem, with the added feature of filling in the areas representing consumer and producer surpluses.</p>
+<p><a href="https://twitter.com/andrewheiss">Andrew Heiss</a> has an interesting <a href="https://www.andrewheiss.com/blog/2017/09/15/create-supply-and-demand-economics-curves-with-ggplot2/">recent
+post</a>
+where he uses ggplot2 to plot a nicely annotated supply-demand
+diagram. In this post we will take a somewhat different approach to solve the
+same problem, with the added feature of filling in the areas representing
+consumer and producer surpluses.</p>
 <p>We start by defining supply and demand functions.</p>
 <pre class="r"><code>library(tidyverse)
 
@@ -26,7 +31,12 @@ chart &lt;- ggplot() +
   stat_function(aes(x, color = &quot;Supply&quot;), fun = supply)
 chart</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/basic_chart-1.png" width="480" style="display: block; margin: auto;" /></p>
-<p>We now need to find the point of intersection, or, in economic terms, the equilibrium price and quantity. We use the <code>uniroot</code> function for this and pass it an anonymous function that calculates the difference between the supply and demand. <code>uniroot</code> then finds where this difference is zero. This gives us the equilibrium quantity <span class="math inline">\(q^*\)</span>. Passing this quantity to the supply function then gives us the equilibrium price <span class="math inline">\(p^*\)</span>.</p>
+<p>We now need to find the point of intersection, or, in economic terms, the
+equilibrium price and quantity. We use the <code>uniroot</code> function for this and pass
+it an anonymous function that calculates the difference between the supply and
+demand. <code>uniroot</code> then finds where this difference is zero. This gives us the
+equilibrium quantity <span class="math inline">\(q^*\)</span>. Passing this quantity to the supply function then
+gives us the equilibrium price <span class="math inline">\(p^*\)</span>.</p>
 <pre class="r"><code># Equilibrium quantity
 q &lt;- uniroot(function(x) demand(x) - supply(x), range(x))$root
 
@@ -44,7 +54,10 @@ chart</code></pre>
            linetype = &quot;dashed&quot;, color = &quot;grey30&quot;)
 chart</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/chart_w_dashed_lines-1.png" width="480" style="display: block; margin: auto;" /></p>
-<p>Finally, we want to color the area between the demand curve and the dashed line as consumer surplus, and the area below the dashed line but above the supply curve as producer surplus. For this we need to pre-calculate a dummy series from 0 to the equilibrium point, which we pass to the <code>geom_ribbon</code> function.</p>
+<p>Finally, we want to color the area between the demand curve and the dashed line
+as consumer surplus, and the area below the dashed line but above the supply
+curve as producer surplus. For this we need to pre-calculate a dummy series from
+0 to the equilibrium point, which we pass to the <code>geom_ribbon</code> function.</p>
 <pre class="r"><code>z &lt;- seq(0, q, 0.01)
 
 chart &lt;- chart + 
@@ -54,7 +67,8 @@ chart &lt;- chart +
                   fill = &quot;Consumer surplus&quot;), alpha = 0.25)
 chart</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/chart_w_ribbon-1.png" width="480" style="display: block; margin: auto;" /></p>
-<p>As a last touch-up we drop some chart junk and properly annotate the equilibrium price and quantity.</p>
+<p>As a last touch-up we drop some chart junk and properly annotate the equilibrium
+price and quantity.</p>
 <pre class="r"><code>chart + 
   scale_x_continuous(expand = c(0, 0), 
                      breaks = q, labels = &quot;q*&quot;) +
@@ -69,7 +83,8 @@ chart</code></pre>
   labs(x = &quot;Quantity&quot;, y = &quot;Price&quot;, 
        color = NULL, fill = NULL)</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/finished_chart-1.png" width="336" style="display: block; margin: auto;" /></p>
-<p>Indeed, we can now wrap all that code in a function that takes as input a supply and a demand function, and returns the corresponding diagram.</p>
+<p>Indeed, we can now wrap all that code in a function that takes as input a supply
+and a demand function, and returns the corresponding diagram.</p>
 <pre class="r"><code>plot_surpluses &lt;- function(demand, supply, domain) {
   
   # Equilibrium quantity
@@ -114,7 +129,8 @@ chart</code></pre>
 
 plot_surpluses(demand, supply, domain = c(0, 5))</code></pre>
 <p><img src="/post/2017-09-19-plotting-consumer-and-producer-surpluses-in-ggplot2_files/figure-html/plot_function-1.png" width="336" style="display: block; margin: auto;" /></p>
-<p>In case we want the actual numerical values of the surpluses we use the following formulas:</p>
+<p>In case we want the actual numerical values of the surpluses we use the
+following formulas:</p>
 <p><span class="math display">\[
 \text{consumer surplus} = \int_{0}^{q^*} D(x) dx - p^*q^*
 \]</span></p>
@@ -136,14 +152,17 @@ surpluses(demand, supply, c(0, 5))</code></pre>
 ## 
 ## $producer
 ## [1] 66.24092</code></pre>
-<p>For kicks, and to double-check, we can also solve the problem by hand. Setting both equations equal to <span class="math inline">\(p^*\)</span> gives us</p>
+<p>For kicks, and to double-check, we can also solve the problem by hand. Setting
+both equations equal to <span class="math inline">\(p^*\)</span> gives us</p>
 <p><span class="math display">\[
 p^* = (q - 10)^2
 \]</span></p>
 <p><span class="math display">\[
 p^* = q^2 + 2q + 8.
 \]</span></p>
-<p>Solving this system for <span class="math inline">\(q\)</span> gives us <span class="math inline">\(q^* = 46/11 \approx 4.18\)</span>. Evaluating the supply (or demand) function at this value gives <span class="math inline">\(p^* = 4.18^2 + 2 \times 4.18 + 8 \approx 33.85\)</span>. Hence, <span class="math inline">\(p^*q^* \approx 4.18 \times 33.85 \approx 141\)</span>. Evaluating the integral in the demand surplus equation gives us</p>
+<p>Solving this system for <span class="math inline">\(q\)</span> gives us <span class="math inline">\(q^* = 46/11 \approx 4.18\)</span>. Evaluating the
+supply (or demand) function at this value gives <span class="math inline">\(p^* = 4.18^2 + 2 \times 4.18 + 8 \approx 33.85\)</span>. Hence, <span class="math inline">\(p^*q^* \approx 4.18 \times 33.85 \approx 141\)</span>.
+Evaluating the integral in the demand surplus equation gives us</p>
 <p><span class="math display">\[
 \int_{0}^{q*} D(x) dx = \int_{0}^{4.18} (q - 10)^2 dq = \frac{(q - 10)^3}{3} \bigg\rvert_0^{4.18} = \frac{(4.18 - 10)^3}{3} - \frac{-10^3}{3} \approx 267.
 \]</span></p>
@@ -151,4 +170,5 @@ p^* = q^2 + 2q + 8.
 <p><span class="math display">\[
 \text{consumer surplus} = \int_{0}^{q^*} D(q) dq - p^*q^* \approx 267 - 141 = 126
 \]</span></p>
-<p>which corresponds precisely with the result given by <code>surpluses</code>. Finding the producer surplus by hand is left to the reader as an exercise.</p>
+<p>which corresponds precisely with the result given by <code>surpluses</code>. Finding the
+producer surplus by hand is left to the reader as an exercise.</p>
