@@ -16,6 +16,7 @@ editor_options:
 
 ```{r}
 library(tidyverse)
+knitr::opts_chunk$set(eval = FALSE)
 ```
 
 ```{r}
