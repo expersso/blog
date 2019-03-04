@@ -1,0 +1,124 @@
+---
+title: XKCD and the normal distribution
+author: EP
+date: '2019-03-04'
+slug: xkcd-and-the-normal-distribution
+categories: []
+tags:
+  - probability
+  - statistics
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(fig.width = 3, fig.height = 3)
+```
+
+Thomas Lumley ([\@tslumley](https://twitter.com/tslumley)) has a nice 
+[blog post](https://notstatschat.rbind.io/2019/03/04/normal-horizontiles/)
+out today where he confirms the calculations of this XKCD picture:
+
+![](https://imgs.xkcd.com/comics/normal_distribution.png)
+
+In this post I do the same calculation, but take a somewhat different approach.
+
+By exploiting the symmetry of the normal distribution, we can focus on
+calculating just the area in left part of the curve, and then double that to get
+the total area.
+
+```{r plot}
+library(ggplot2)
+theme_set(theme_classic())
+
+g <- ggplot() + 
+  stat_function(aes(-3:0), fun = dnorm) +
+  geom_vline(xintercept = 0) +
+  labs(x = NULL, y = NULL)
+
+g
+```
+
+The XKCD picture tells us that the gray area is centered around the midpoint 
+and constitute 52.7% of the total height of the curve evaluated at zero, 
+i.e. $\phi(0)$. That means that the heights of the remaining parts are
+$\frac{1 - .527}{2}$ each.
+
+```{r heights}
+h <- .527
+k <- (1 - h) / 2
+k
+```
+
+We can thus conclude that the horizontal lines have y-intercepts of:
+
+```{r plot_w_hlines}
+q <- dnorm(0) * k
+p <- dnorm(0) * (h + k)
+
+g <- g +
+  geom_hline(yintercept = c(p, q)) + 
+  annotate("text", x = -3, y = c(p, q), 
+           label = c("p", "q"), vjust = -1)
+
+g
+```
+
+Next, we must find the x-values for where the horizontal lines intersect the
+density curve. This equivalent to finding the roots of the functions $\phi(z) -
+q$ and $\phi(z) - p)$:
+
+```{r plot_w_vlines}
+a <- uniroot(function(z) dnorm(z) - q, c(-3, 0))$root
+b <- uniroot(function(z) dnorm(z) - p, c(-3, 0))$root
+
+g <- g + 
+  geom_vline(xintercept = c(a, b)) +
+  annotate("text", x = c(a, b), y = 0, 
+           label = c("a", "b"), hjust = -1)
+
+g
+```
+
+To keep things clear, we can now label the disjoint areas created by the
+intersecting lines:
+
+```{r plot_v_area_lbls}
+g <- g +
+  annotate("text", (a + b) / 2, q / 2,              label = "A") +
+  annotate("text", b / 2      , q / 2,              label = "B") +
+  annotate("text", b / 2      , (p + q) / 2,        label = "C") +
+  annotate("text", b / 2      , (dnorm(0) + p) / 2, label = "D") +
+  annotate("text", (a + b) / 2, (p + q) / 3,        label = "E")
+
+g
+```
+
+The areas of the rectangles are easy to calculate:
+
+```{r rect_areas}
+A <- abs(b - a) * q
+B <- abs(b) * q
+C <- abs(b) * (p - q)
+```
+
+To get the areas of `E`, however, we must integrate the normal curve between
+`a` and `b`, and then subtract the area of `A`:
+
+$\int_a^b \phi(z) dz - \int_a^b q dz.$
+
+This is equivalent to taking the difference between the normal CDF at `a` and
+`b` and subtracting `A`, i.e. $\Phi(b) - \Phi(a) - A$. Similarly, we get the
+area of `D` by calculating $\Phi(0) - \Phi(b) - (B + C)$
+
+```{r nrect_areas}
+E <- pnorm(b) - pnorm(a) - A
+D <- pnorm(0) - pnorm(b) - (C + B)
+```
+
+With all areas calculated, we just need twice the area of $C + E$:
+
+```{r total_area}
+total_area <- (C + E) * 2
+sprintf("Total area: %0.2f%%", total_area * 100)
+```
+
+As expected, we get the correct result.
