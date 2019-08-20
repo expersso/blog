@@ -196,15 +196,15 @@ which.matrix.max <- function(m) {
   list(i = idx[, 1], j = idx[, 2])
 }
 
-strat <- which.matrix.max(m)
-strat
+trade <- which.matrix.max(m)
+trade
 ```
 
 Finally, we can add a line to the plot of the share price that connects the
 buying and selling periods:
 
 ```{r}
-df_trade <- df[df$n %in% c(strat$j, strat$i), ]
+df_trade <- df[df$n %in% c(trade$j, trade$i), ]
 
 p +
   geom_line(data = df_trade, color = "blue") +

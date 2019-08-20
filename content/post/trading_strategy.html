@@ -182,8 +182,8 @@ function:</p>
   list(i = idx[, 1], j = idx[, 2])
 }
 
-strat &lt;- which.matrix.max(m)
-strat</code></pre>
+trade &lt;- which.matrix.max(m)
+trade</code></pre>
 <pre><code>## $i
 ## [1] 10
 ## 
@@ -191,7 +191,7 @@ strat</code></pre>
 ## [1] 4</code></pre>
 <p>Finally, we can add a line to the plot of the share price that connects the
 buying and selling periods:</p>
-<pre class="r"><code>df_trade &lt;- df[df$n %in% c(strat$j, strat$i), ]
+<pre class="r"><code>df_trade &lt;- df[df$n %in% c(trade$j, trade$i), ]
 
 p +
   geom_line(data = df_trade, color = &quot;blue&quot;) +
