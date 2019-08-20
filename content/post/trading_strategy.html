@@ -1,0 +1,305 @@
+---
+title: Solving a problem with a generalized outer product
+author: EP
+date: '2019-08-20'
+tags:
+  - functional programming
+  - math
+slug: solving-a-problem-with-a-generalized-outer-product
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I learned about this interesting problem from a recent <a href="https://ryxcommar.com/2019/08/05/a-cool-sql-problem-avoiding-for-loops/">blog
+post</a>
+by <a href="https://twitter.com/ryxcommar">@ryxcommar</a>.</p>
+<p>Imagine you have a time-series of the realized price of some stock:</p>
+<pre class="r"><code>library(ggplot2)
+
+set.seed(2)
+df &lt;- data.frame(n = 1:100, y = cumsum(rnorm(100)))
+head(df)</code></pre>
+<pre><code>##   n          y
+## 1 1 -0.8969145
+## 2 2 -0.7120654
+## 3 3  0.8757800
+## 4 4 -0.2545957
+## 5 5 -0.3348475
+## 6 6 -0.2024272</code></pre>
+<pre class="r"><code>p &lt;- ggplot(df, aes(x = n, y = y)) + geom_line()
+p</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-1-1.png" width="384" /></p>
+<p>With the benefit of hindsight, when would’ve been the ideal period to buy and
+sell that stock? For this stock, inspection of the chart above suggests that the
+ideal trade would have been to have bought it in the first period, and sold it
+at the peak in period 33:</p>
+<pre class="r"><code>df_trade &lt;- df[df$n %in% c(1, 33), ]
+
+ggplot(df, aes(x = n, y = y)) +
+  geom_line() +
+  geom_line(data = df_trade, color = &quot;red&quot;) +
+  geom_point(data = df_trade, color = &quot;red&quot;)</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-2-1.png" width="384" /></p>
+<p>But how can we solve this problem in general? Also, how would the solution
+change if we were forced to hold the stock for <span class="math inline">\(N\)</span> periods before being allowed
+to sell it?</p>
+<p>In the original blog post, the author has two solutions; a naive solution based
+on a for-loop, and a preferred solution based on a series of table joins using
+SQL. In this post we will solve the same problem using some functional
+programming and a bit of matrix magic.</p>
+<p>For kicks, we will solve it using base R for everything except plotting.</p>
+</div>
+<div id="solution-strategy" class="section level2">
+<h2>Solution strategy</h2>
+<p>Let’s first state the problem a bit more formally, mostly for notational
+purposes.</p>
+<p><strong>Problem</strong></p>
+<p>Let <span class="math inline">\(\overrightarrow{y} = [y_1, \dots, y_n]^T\)</span> be a vector of length <span class="math inline">\(n\)</span> with
+real-valued entries.</p>
+<p>Find <span class="math inline">\(i, j \in \mathbb{N}^0\)</span> such that <span class="math inline">\(i - j \geq N\)</span>, <span class="math inline">\(N \in \mathbb{N}\)</span>, and <span class="math inline">\(y_i - y_j \geq y_k - y_l\)</span> for all <span class="math inline">\(k, l \in \{1, \dots, n\}\)</span>.</p>
+<p><strong>Solution</strong></p>
+<p>Let <span class="math inline">\(M\)</span> be a matrix of pairwise differences of the elements in
+<span class="math inline">\(\overrightarrow{y}\)</span>:</p>
+<p><span class="math display">\[
+M = 
+\begin{bmatrix}
+y_1 - y_1 &amp; y_1 - y_2 &amp; \dots &amp; y_1 - y_n \\
+y_2 - y_1 &amp; y_2 - y_2 &amp; \dots &amp; y_2 - y_n \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+y_n - y_1 &amp;  y_n - y_2 &amp; \dots &amp; y_n - y_n
+\end{bmatrix}
+=
+\begin{bmatrix}
+0 &amp; -d_{21} &amp; \dots &amp; -d_{n1} \\
+d_{21} &amp; 0 &amp; \dots &amp; -d_{n2} \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+d_{n1} &amp;  d_{n2} &amp; \dots &amp; 0
+\end{bmatrix}.
+\]</span></p>
+<p>Now replace all entries of <span class="math inline">\(M\)</span> above the diagonal with <span class="math inline">\(-\infty\)</span>:</p>
+<p><span class="math display">\[
+M&#39; = 
+\begin{bmatrix}
+0 &amp; -\infty &amp; \dots &amp; -\infty \\
+d_{21} &amp; 0 &amp; \dots &amp; -\infty \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+d_{n1} &amp;  d_{n2} &amp; \dots &amp; 0
+\end{bmatrix}.
+\]</span></p>
+<p>That is, choosing an “illegal” trade – where you sell the stock
+before you bought it – results in a payoff of negative infinity.</p>
+<p>Let’s now assume that <span class="math inline">\(N = 0\)</span>, i.e. that that there are no restrictions on for
+how long we must hold the stock. With this assumption, and with <span class="math inline">\(M&#39;\)</span>
+constructed, all we need to do is extract the maximum value <span class="math inline">\(d_{ij}\)</span> from <span class="math inline">\(M&#39;\)</span>;
+<span class="math inline">\(i\)</span> will be the sell-date, <span class="math inline">\(j\)</span> the buy-date, and <span class="math inline">\(d_{ij}\)</span> the realized profit.</p>
+<p>As an aside for the algebra-heads among the readership, replacing illegal
+strategies with <span class="math inline">\(-\infty\)</span> works because the extended real number line
+<span class="math inline">\(\bar{\mathbb{R}} = \mathbb{R} \cup \{-\infty, \infty\}\)</span> forms a monoid under
+the maximum operator with <span class="math inline">\(-\infty\)</span> as the identity element. The proof is left
+as an exercise.</p>
+<p>Hint: you need to prove</p>
+<ol style="list-style-type: decimal">
+<li>closure: <span class="math inline">\(\max(a, b) \in \mathbb{R} \cup \{-\infty, \infty\}\)</span> for all <span class="math inline">\(a,b \in \bar{\mathbb{R}}\)</span>,</li>
+<li>associativity: <span class="math inline">\(\max(\max(a, b), c) = \max(a, \max(b,c))\)</span> for all
+<span class="math inline">\(a,b,c \in \bar{\mathbb{R}}\)</span>,</li>
+<li>identity element: there exists some unique element <span class="math inline">\(e \in \bar{\mathbb{R}}\)</span>
+such that <span class="math inline">\(\max(a, e) = \max(e, a) = a\)</span> for all <span class="math inline">\(a \in \bar{\mathbb{R}}\)</span>.</li>
+</ol>
+</div>
+<div id="solution-in-r" class="section level2">
+<h2>Solution in R</h2>
+<p>With the solution strategy in hand, all we have to do now is implement it in R.</p>
+<p>We first create a smaller data set to work with:</p>
+<pre class="r"><code>set.seed(3)
+df &lt;- data.frame(n = 1:10, y = cumsum(rnorm(10)))
+df</code></pre>
+<pre><code>##     n          y
+## 1   1 -0.9619334
+## 2   2 -1.2544591
+## 3   3 -0.9956709
+## 4   4 -2.1478028
+## 5   5 -1.9520200
+## 6   6 -1.9218960
+## 7   7 -1.8364783
+## 8   8 -0.7198681
+## 9   9 -1.9387255
+## 10 10 -0.6713568</code></pre>
+<pre class="r"><code>p &lt;- ggplot(df, aes(x = n, y = y)) + geom_line()
+p</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-3-1.png" width="384" /></p>
+<p>To create the matrix of pairwise differences we can use the generalized outer
+product (or “outer difference”) operator:</p>
+<pre class="r"><code>m &lt;- outer(df$y, df$y, FUN = `-`)
+round(m, 1)</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+##  [1,]  0.0  0.3  0.0  1.2  1.0  1.0  0.9 -0.2  1.0  -0.3
+##  [2,] -0.3  0.0 -0.3  0.9  0.7  0.7  0.6 -0.5  0.7  -0.6
+##  [3,]  0.0  0.3  0.0  1.2  1.0  0.9  0.8 -0.3  0.9  -0.3
+##  [4,] -1.2 -0.9 -1.2  0.0 -0.2 -0.2 -0.3 -1.4 -0.2  -1.5
+##  [5,] -1.0 -0.7 -1.0  0.2  0.0  0.0 -0.1 -1.2  0.0  -1.3
+##  [6,] -1.0 -0.7 -0.9  0.2  0.0  0.0 -0.1 -1.2  0.0  -1.3
+##  [7,] -0.9 -0.6 -0.8  0.3  0.1  0.1  0.0 -1.1  0.1  -1.2
+##  [8,]  0.2  0.5  0.3  1.4  1.2  1.2  1.1  0.0  1.2   0.0
+##  [9,] -1.0 -0.7 -0.9  0.2  0.0  0.0 -0.1 -1.2  0.0  -1.3
+## [10,]  0.3  0.6  0.3  1.5  1.3  1.3  1.2  0.0  1.3   0.0</code></pre>
+<p>Next, we need to replace the upper triangle with <code>-Inf</code>:</p>
+<pre class="r"><code>m[upper.tri(m)] &lt;- -Inf
+round(m, 1)</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+##  [1,]  0.0 -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [2,] -0.3  0.0 -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [3,]  0.0  0.3  0.0 -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [4,] -1.2 -0.9 -1.2  0.0 -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [5,] -1.0 -0.7 -1.0  0.2  0.0 -Inf -Inf -Inf -Inf  -Inf
+##  [6,] -1.0 -0.7 -0.9  0.2  0.0  0.0 -Inf -Inf -Inf  -Inf
+##  [7,] -0.9 -0.6 -0.8  0.3  0.1  0.1  0.0 -Inf -Inf  -Inf
+##  [8,]  0.2  0.5  0.3  1.4  1.2  1.2  1.1  0.0 -Inf  -Inf
+##  [9,] -1.0 -0.7 -0.9  0.2  0.0  0.0 -0.1 -1.2  0.0  -Inf
+## [10,]  0.3  0.6  0.3  1.5  1.3  1.3  1.2  0.0  1.3     0</code></pre>
+<p>So with these data, if we buy the stock in the first period and sell it in the
+eight period, we’d realize a profit of 0.2 (<code>m[8, 1]</code>). The maximum appears in
+<code>m[10, 4]</code>, indicating that the optimum trade would have been to buy in period 4
+and sell in period 10.</p>
+<p>To extract the indices of the maximum we <em>could</em> first find the max in each
+column, and then find in what row that appears:</p>
+<pre class="r"><code>n_buy &lt;- which.max(apply(m, 2, max))
+n_sell &lt;- which.max(m[, n_buy])
+
+n_buy</code></pre>
+<pre><code>## [1] 4</code></pre>
+<pre class="r"><code>n_sell</code></pre>
+<pre><code>## [1] 10</code></pre>
+<p>A nicer way, however, is to rely on the <code>arr.ind</code> argument of the <code>which</code>
+function:</p>
+<pre class="r"><code>which(m == max(m), arr.ind = TRUE, useNames = FALSE)</code></pre>
+<pre><code>##      [,1] [,2]
+## [1,]   10    4</code></pre>
+<p>Indeed, let’s wrap that into a function that follows our notation:</p>
+<pre class="r"><code>which.matrix.max &lt;- function(m) {
+  idx &lt;- which(m == max(m), arr.ind = TRUE, useNames = FALSE)
+  list(i = idx[, 1], j = idx[, 2])
+}
+
+strat &lt;- which.matrix.max(m)
+strat</code></pre>
+<pre><code>## $i
+## [1] 10
+## 
+## $j
+## [1] 4</code></pre>
+<p>Finally, we can add a line to the plot of the share price that connects the
+buying and selling periods:</p>
+<pre class="r"><code>df_trade &lt;- df[df$n %in% c(strat$j, strat$i), ]
+
+p +
+  geom_line(data = df_trade, color = &quot;blue&quot;) +
+  geom_point(data = df_trade, color = &quot;blue&quot;)</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-9-1.png" width="384" /></p>
+</div>
+<div id="generalizing-the-solution" class="section level2">
+<h2>Generalizing the solution</h2>
+<p>What about if <span class="math inline">\(N &gt; 0\)</span>? That is, how does our strategy change if we are forced to
+hold the stock for <span class="math inline">\(N\)</span> periods before selling it (we’re also implicitly assuming
+that we must make a trade at some point, i.e. we cannot choose to simply make no
+trades)? Well, this simply amounts making the <span class="math inline">\(N\)</span> entries below (and including
+the diagonal) infeasible trades, so we simply have to set them to <code>-Inf</code> as
+well.</p>
+<p>If, for example, <span class="math inline">\(N = 7\)</span>:</p>
+<pre class="r"><code>N &lt;- 7
+m[row(m) - col(m) &lt; N] &lt;- -Inf
+round(m, 1)</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+##  [1,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [2,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [3,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [4,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [5,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [6,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [7,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [8,]  0.2 -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [9,] -1.0 -0.7 -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+## [10,]  0.3  0.6  0.3 -Inf -Inf -Inf -Inf -Inf -Inf  -Inf</code></pre>
+<p>Now the only feasible trades are to buy in one of the first three periods and
+sell in the last three periods. The best one would have been to buy in period 2
+and sell in period 10.</p>
+<p>Since the <code>m[row(m) - col(m) &lt; N]</code> solution generalizes the use of <code>upper.tri</code>
+above, we can wrap this into a function:</p>
+<pre class="r"><code>make_payoff_matrix &lt;- function(x, N) {
+  m &lt;- outer(x, x, FUN = `-`)
+  m[row(m) - col(m) &lt; N] &lt;- -Inf
+  m
+}
+
+m &lt;- make_payoff_matrix(df$y, 7)
+round(m, 1)</code></pre>
+<pre><code>##       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+##  [1,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [2,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [3,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [4,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [5,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [6,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [7,] -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [8,]  0.2 -Inf -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+##  [9,] -1.0 -0.7 -Inf -Inf -Inf -Inf -Inf -Inf -Inf  -Inf
+## [10,]  0.3  0.6  0.3 -Inf -Inf -Inf -Inf -Inf -Inf  -Inf</code></pre>
+<p>We can further combine this with the <code>which.matrix.max</code> above to encapsulate the
+entire algorithm:</p>
+<pre class="r"><code>get_opt_trade &lt;- function(x, N = 0) {
+  
+  m &lt;- make_payoff_matrix(x, N)
+  idx &lt;- which.matrix.max(m)
+  
+  data.frame(
+    n_buy  = idx$j,
+    n_sell = idx$i,
+    n_held = idx$i - idx$j,
+    profit = x[idx$i] - x[idx$j],
+    N      = N
+  )
+}
+
+get_opt_trade(df$y, 7)</code></pre>
+<pre><code>##   n_buy n_sell n_held    profit N
+## 1     2     10      8 0.5831024 7</code></pre>
+<p>Having abstracted away all the complexities of the solution, we can now easily
+ask, for example, how the optimum trade and profit changes as a function of the
+minimum holding period:</p>
+<pre class="r"><code># Create a longer time-series
+set.seed(11)
+n &lt;- 25
+df &lt;- data.frame(n = 1:n, y = cumsum(rnorm(n)))
+
+p &lt;- ggplot(df, aes(x = n, y = y)) + geom_line()
+p</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-13-1.png" width="384" /></p>
+<pre class="r"><code>df_trade &lt;- lapply(1:10, get_opt_trade, x = df$y)
+df_trade &lt;- do.call(rbind, df_trade)
+
+df_trade &lt;- merge(df_trade, df, by.x = &quot;n_buy&quot;, by.y = &quot;n&quot;)
+df_trade &lt;- merge(df_trade, df, by.x = &quot;n_sell&quot;, by.y = &quot;n&quot;, 
+                  suffixes = c(&quot;_buy&quot;, &quot;_sell&quot;))
+
+p +
+  geom_segment(aes(
+    x = n_buy, 
+    xend = n_sell, 
+    y = y_buy, 
+    yend = y_sell, 
+    color = factor(N)
+    ), 
+    df_trade) +
+  theme(legend.position = &quot;bottom&quot;) +
+  labs(color = &quot;Minimum \nholding period&quot;)</code></pre>
+<p><img src="/post/trading_strategy_files/figure-html/unnamed-chunk-14-1.png" width="384" /></p>
+<p>The chart shows an interest pattern. The simulated stock here slumped in the
+early period, peaked around periods 8-9, then fell almost monotonically
+afterwards. So if we faced no or only short minimum holding-limits, the best
+trade would have been to buy in the early slump and sell at the peak. However,
+if we’re forced to hold the stock for 9 or more periods, we would’ve been unable
+to conduct this trade. Our strategy then finds that the best trade (which
+minimizes losses) would have been to have bought and sold once the fall in stock
+prices had levelled off towards the end of the period.</p>
+</div>
